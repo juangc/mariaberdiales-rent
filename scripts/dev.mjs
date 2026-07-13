@@ -10,9 +10,13 @@ const tailwind = spawn(executable, [
   '-i', './assets/styles.css',
   '-o', './assets/tailwind.css',
   '--watch',
-], { cwd: root, stdio: 'inherit' });
+], {
+  cwd: root,
+  stdio: 'inherit',
+  env: { ...process.env, BROWSERSLIST_IGNORE_OLD_DATA: 'true' },
+});
 
-const server = spawn(process.execPath, ['scripts/serve.mjs'], {
+const server = spawn(process.execPath, ['server/app.mjs'], {
   cwd: root,
   stdio: 'inherit',
 });

@@ -2,10 +2,15 @@
   "name": "maria-berdiales-10-2b",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "scripts": {
     "dev": "node scripts/dev.mjs",
-    "build:css": "tailwind -c ./tailwind.config.cjs -i ./assets/styles.css -o ./assets/tailwind.css --minify",
-    "build": "npm run build:css && node scripts/build.mjs"
+    "dev:static": "node scripts/serve.mjs",
+    "build:css": "BROWSERSLIST_IGNORE_OLD_DATA=true tailwind -c ./tailwind.config.cjs -i ./assets/styles.css -o ./assets/tailwind.css --minify",
+    "build": "npm run build:css && node scripts/build.mjs",
+    "start": "node server/app.mjs"
   },
   "devDependencies": {
     "tailwindcss": "3.2.7"

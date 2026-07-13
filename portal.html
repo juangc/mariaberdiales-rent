@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Área privada · María Berdiales 10</title>
+  <link rel="stylesheet" href="assets/tailwind.css?v=20260713-3">
+  <script src="assets/portal.js?v=20260713-3" defer></script>
+</head>
+<body class="portal-body">
+  <header class="portal-header">
+    <a href="/" class="portal-brand">
+      <span class="portal-brand-kicker">María Berdiales 10 · 2º B</span>
+      <span class="portal-brand-title">Área privada</span>
+    </a>
+    <button id="logoutButton" class="portal-quiet-button hidden" type="button">Cerrar sesión</button>
+  </header>
+
+  <main class="portal-main">
+    <section id="loginView" class="login-layout">
+      <div>
+        <p class="portal-eyebrow">Documentación de la vivienda</p>
+        <h1 class="portal-hero-title">Todo en un lugar seguro.</h1>
+        <p class="portal-lead">Consulta tus contratos y las facturas compartidas del piso. Necesitas una cuenta activa para acceder.</p>
+      </div>
+      <form id="loginForm" class="portal-panel login-card">
+        <div>
+          <p class="portal-card-kicker">Acceso para inquilinos</p>
+          <h2 class="portal-card-title">Inicia sesión</h2>
+        </div>
+        <label class="field-label">
+          Correo electrónico
+          <input class="field-input" name="email" type="email" autocomplete="username" required>
+        </label>
+        <label class="field-label">
+          Contraseña
+          <input class="field-input" name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <button class="portal-primary-button" type="submit">Entrar</button>
+        <p id="loginMessage" class="form-message" role="status"></p>
+      </form>
+    </section>
+
+    <section id="dashboardView" class="hidden">
+      <div class="dashboard-intro">
+        <div>
+          <p class="portal-eyebrow">Documentos y suministros</p>
+          <h1 id="welcomeTitle" class="portal-page-title">Tu documentación</h1>
+        </div>
+        <div id="documentSummary" class="summary-grid"></div>
+      </div>
+
+      <div class="document-toolbar">
+        <h2 class="portal-section-title">Documentos disponibles</h2>
+        <div class="document-filters">
+          <select id="documentFilter" class="field-input filter-select" aria-label="Filtrar por tipo de documento">
+            <option value="all">Todos los documentos</option>
+            <option value="invoice">Facturas</option>
+            <option value="contract">Contratos</option>
+            <option value="other">Otros</option>
+          </select>
+          <select id="documentStatusFilter" class="field-input filter-select" aria-label="Filtrar por estado">
+            <option value="all">Todos los estados</option>
+            <option value="information">Informativos</option>
+            <option value="pending">Pendientes</option>
+            <option value="paid">Pagadas</option>
+            <option value="overdue">Vencidas</option>
+          </select>
+          <select id="documentUtilityFilter" class="field-input filter-select" aria-label="Filtrar por tipo de factura">
+            <option value="all">Todos los suministros</option>
+            <option value="electricity">Luz</option>
+            <option value="water">Agua</option>
+            <option value="gas">Gas</option>
+            <option value="other">Otros</option>
+          </select>
+        </div>
+      </div>
+      <div id="documentList" class="document-list"></div>
+      <div id="emptyDocuments" class="portal-empty hidden">
+        <p id="emptyDocumentsTitle" class="portal-card-title">Todavía no hay documentos</p>
+        <p id="emptyDocumentsText">Cuando se publique una factura o un contrato aparecerá aquí.</p>
+      </div>
+
+      <section id="adminView" class="admin-section hidden">
+        <div class="admin-heading">
+          <div>
+            <p class="portal-eyebrow">Administración</p>
+            <h2 class="portal-page-title">Gestionar el portal</h2>
+          </div>
+          <p class="admin-note">Los contratos privados solo son visibles para el inquilino asignado.</p>
+        </div>
+
+        <div class="admin-grid">
+          <form id="userForm" class="portal-panel admin-card">
+            <div>
+              <p class="portal-card-kicker">Inquilinos</p>
+              <h3 class="portal-card-title">Crear acceso</h3>
+            </div>
+            <label class="field-label">Nombre<input class="field-input" name="name" required minlength="2"></label>
+            <label class="field-label">Correo<input class="field-input" name="email" type="email" required></label>
+            <label class="field-label">Contraseña temporal<input class="field-input" name="password" type="password" minlength="15" required></label>
+            <button class="portal-secondary-button" type="submit">Crear inquilino</button>
+            <p id="userMessage" class="form-message" role="status"></p>
+          </form>
+
+          <form id="documentForm" class="portal-panel admin-card">
+            <div>
+              <p class="portal-card-kicker">Archivo PDF</p>
+              <h3 id="documentFormTitle" class="portal-card-title">Publicar documento</h3>
+            </div>
+            <div class="field-grid">
+              <label class="field-label">Tipo
+                <select id="documentKind" class="field-input" name="kind" required>
+                  <option value="invoice">Factura</option>
+                  <option value="contract">Contrato</option>
+                  <option value="other">Otro</option>
+                </select>
+              </label>
+              <label class="field-label">Visibilidad
+                <select id="documentVisibility" class="field-input" name="visibility" required>
+                  <option value="shared">Todos los inquilinos</option>
+                  <option value="private">Un inquilino</option>
+                </select>
+              </label>
+            </div>
+            <label id="utilityTypeField" class="field-label">Tipo de suministro
+              <select id="documentUtilityType" class="field-input" name="utilityType" required>
+                <option value="electricity">Luz</option>
+                <option value="water">Agua</option>
+                <option value="gas">Gas</option>
+                <option value="other">Otros</option>
+              </select>
+            </label>
+            <label class="field-label">Título<input class="field-input" name="title" required></label>
+            <label id="tenantField" class="field-label hidden">Inquilino
+              <select id="documentTenant" class="field-input" name="tenantId"></select>
+            </label>
+            <div class="field-grid">
+              <label class="field-label">Periodo<input class="field-input" name="period" placeholder="Ej. junio 2026"></label>
+              <label class="field-label">Importe (€)<input class="field-input" name="amount" type="number" min="0" step="0.01"></label>
+            </div>
+            <div class="field-grid">
+              <label class="field-label">Vencimiento<input class="field-input" name="dueDate" type="date"></label>
+              <label class="field-label">Estado
+                <select class="field-input" name="status">
+                  <option value="pending">Pendiente</option>
+                  <option value="paid">Pagada</option>
+                  <option value="overdue">Vencida</option>
+                  <option value="information">Informativo</option>
+                </select>
+              </label>
+            </div>
+            <label id="documentFileField" class="field-label">PDF<input id="documentFile" class="field-file" name="file" type="file" accept="application/pdf,.pdf" required></label>
+            <div class="document-form-actions">
+              <button id="documentSubmitButton" class="portal-secondary-button" type="submit">Publicar documento</button>
+              <button id="documentCancelButton" class="portal-quiet-button hidden" type="button">Cancelar edición</button>
+            </div>
+            <p id="documentMessage" class="form-message" role="status"></p>
+          </form>
+        </div>
+
+        <div class="portal-panel users-panel">
+          <div>
+            <p class="portal-card-kicker">Accesos</p>
+            <h3 class="portal-card-title">Usuarios</h3>
+          </div>
+          <div id="userList" class="user-list"></div>
+        </div>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

@@ -149,6 +149,13 @@ a:hover { @apply text-ink; }
   background-color: var(--pill-active-bg);
   border-color: var(--pill-active-bg);
 }
+.nav-pill-private {
+  @apply font-semibold;
+  color: var(--color-cream);
+  background-color: var(--color-blue);
+  border-color: var(--color-blue);
+}
+.nav-pill-private:hover { color: var(--color-cream); }
 
 .sections-inner { @apply mx-auto max-w-[1000px] px-[22px] pt-1 pb-[30px]; }
 .content-section { @apply mt-6 scroll-mt-[60px] border-t border-black/10 pt-[30px] pb-1; }
@@ -216,6 +223,80 @@ a:hover { @apply text-ink; }
 .footer-logo img { @apply block h-6 w-auto; }
 .footer-address { @apply mt-[22px] font-mono text-[10.5px] tracking-[0.12em] text-[var(--footer-tag)] uppercase; }
 
+/* Portal privado */
+.portal-body { @apply min-h-screen bg-cream font-body text-ink; }
+.portal-header { @apply sticky top-0 z-40 flex items-center justify-between border-b border-black/10 bg-cream/95 px-5 py-4 backdrop-blur; }
+.portal-brand { @apply flex flex-col no-underline; }
+.portal-brand:hover { @apply text-ink; }
+.portal-brand-kicker { @apply font-mono text-[9px] tracking-[0.12em] text-accent uppercase; }
+.portal-brand-title { @apply font-display text-2xl leading-none font-bold text-ink uppercase; }
+.portal-main { @apply mx-auto max-w-[1100px] px-5 py-10; }
+.login-layout { @apply grid min-h-[70vh] content-center gap-10; }
+.portal-eyebrow { @apply mb-2 font-mono text-[10px] font-bold tracking-[0.14em] text-accent uppercase; }
+.portal-hero-title { @apply max-w-[650px] font-display text-5xl leading-[0.92] font-extrabold text-ink uppercase; }
+.portal-lead { @apply mt-5 max-w-[590px] text-lg leading-relaxed text-ink/80; }
+.portal-panel { @apply rounded-xl border border-black/10 bg-white shadow-[0_18px_50px_-32px_rgb(0_0_0/45%)]; }
+.login-card { @apply flex flex-col gap-5 p-6; }
+.portal-card-kicker { @apply font-mono text-[9px] font-bold tracking-[0.12em] text-accent uppercase; }
+.portal-card-title { @apply mt-1 font-display text-2xl leading-none font-bold text-ink uppercase; }
+.field-label { @apply flex flex-col gap-1.5 font-mono text-[10px] font-bold tracking-[0.06em] text-ink uppercase; }
+.field-input { @apply min-h-[44px] w-full rounded-lg border border-black/15 bg-white px-3 py-2.5 font-body text-sm font-normal tracking-normal text-ink normal-case outline-none transition; }
+.field-input:focus { @apply border-accent ring-2 ring-accent/20; }
+.field-file { @apply w-full rounded-lg border border-dashed border-black/20 bg-cream/40 p-3 font-body text-xs font-normal tracking-normal normal-case; }
+.field-grid { @apply grid grid-cols-2 gap-3; }
+.portal-primary-button { @apply rounded-lg bg-accent px-5 py-3 font-mono text-sm font-bold text-cream transition hover:brightness-95; }
+.portal-secondary-button { @apply rounded-lg bg-ink px-5 py-3 font-mono text-sm font-bold text-white transition hover:bg-black; }
+.portal-quiet-button { @apply rounded-lg border border-black/15 bg-white px-3 py-2 font-mono text-[11px] font-bold text-ink; }
+.form-message { @apply min-h-[20px] text-sm text-ink/70; }
+.form-message.is-error { @apply text-red-700; }
+.dashboard-intro { @apply grid gap-8; }
+.portal-page-title { @apply font-display text-4xl leading-none font-extrabold text-ink uppercase; }
+.summary-grid { @apply grid grid-cols-3 gap-2; }
+.summary-card { @apply flex min-h-[94px] flex-col justify-between rounded-xl bg-ink p-4 text-cream; }
+.summary-label { @apply font-mono text-[9px] tracking-[0.08em] uppercase; }
+.summary-value { @apply font-display text-2xl leading-none font-bold; }
+.document-toolbar { @apply mt-12 mb-4 flex flex-col items-start justify-between gap-4; }
+.document-filters { @apply flex w-full flex-wrap gap-2; }
+.portal-section-title { @apply font-display text-2xl font-bold text-ink uppercase; }
+.filter-select { @apply w-full min-w-[165px]; }
+.document-list { @apply flex flex-col gap-3; }
+.document-card { @apply flex flex-col gap-5 rounded-xl border border-black/10 bg-white p-5 shadow-[0_12px_38px_-34px_rgb(0_0_0/50%)]; }
+.document-card-main { @apply min-w-0 flex-1; }
+.document-tags { @apply mb-2 flex flex-wrap gap-2; }
+.document-kind, .document-status, .utility-tag { @apply rounded-full px-2 py-1 font-mono text-[9px] font-bold tracking-[0.06em] uppercase; }
+.document-kind { @apply bg-cream text-ink; }
+.document-status { @apply bg-gray-100 text-ink; }
+.utility-electricity { @apply bg-yellow-100 text-yellow-800; }
+.utility-water { @apply bg-blue-100 text-blue-800; }
+.utility-gas { @apply bg-purple-100 text-purple-800; }
+.utility-other { @apply bg-slate-100 text-slate-700; }
+.status-paid { @apply bg-green-100 text-green-800; }
+.status-pending { @apply bg-orange-100 text-orange-800; }
+.status-overdue { @apply bg-red-100 text-red-800; }
+.document-title { @apply font-display text-2xl leading-tight font-bold text-ink uppercase; }
+.document-meta { @apply mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink/70; }
+.document-actions { @apply flex flex-wrap items-center gap-2; }
+.document-open-button { @apply rounded-lg bg-accent px-4 py-2.5 font-mono text-xs font-bold text-cream no-underline; }
+.document-open-button:hover { @apply text-cream brightness-95; }
+.document-delete-button { @apply rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 font-mono text-xs font-bold text-red-700; }
+.document-edit-button { @apply rounded-lg border border-black/15 bg-white px-3 py-2.5 font-mono text-xs font-bold text-ink; }
+.compact-select { @apply min-h-[38px] w-auto py-2; }
+.portal-empty { @apply rounded-xl border border-dashed border-black/20 bg-white/40 p-10 text-center text-ink/70; }
+.admin-section { @apply mt-16 border-t border-black/10 pt-12; }
+.admin-heading { @apply mb-6 flex flex-col gap-3; }
+.admin-note { @apply max-w-[560px] text-sm leading-relaxed text-ink/70; }
+.admin-grid { @apply grid gap-5; }
+.admin-card { @apply flex flex-col gap-4 p-5; }
+.document-form-actions { @apply flex flex-wrap items-center gap-2; }
+.users-panel { @apply mt-5 p-5; }
+.user-list { @apply mt-4 divide-y divide-black/10; }
+.user-row { @apply flex items-center justify-between gap-4 py-3; }
+.user-name, .user-email { @apply block; }
+.user-name { @apply text-sm text-ink; }
+.user-email { @apply text-xs text-ink/60; }
+.user-actions { @apply flex items-center gap-2; }
+.user-role { @apply font-mono text-[9px] tracking-[0.06em] text-ink/60 uppercase; }
+
 @media (min-width: 55rem) {
   .page { @apply max-w-[1180px]; }
   .hero { @apply px-14 pt-16 pb-[58px]; }
@@ -226,4 +307,20 @@ a:hover { @apply text-ink; }
   .nav-pill { @apply px-[5px] text-[10px]; }
   .sections-inner { @apply px-10 pt-[22px] pb-[54px]; }
   .content-section:first-child { @apply pt-[22px]; }
+  .portal-header { @apply px-10; }
+  .portal-main { @apply px-10 py-16; }
+  .login-layout { @apply grid-cols-[1fr_390px] items-center gap-16; }
+  .portal-hero-title { @apply text-7xl; }
+  .dashboard-intro { @apply grid-cols-[1fr_500px] items-end; }
+  .summary-grid { @apply gap-3; }
+  .document-toolbar { @apply flex-row items-center; }
+  .document-filters { @apply w-auto justify-end; }
+  .filter-select { @apply w-auto; }
+  .document-card { @apply flex-row items-center justify-between; }
+  .document-actions { @apply justify-end; }
+  .admin-heading { @apply flex-row items-end justify-between; }
+  .admin-grid { @apply grid-cols-2; }
 }
+
+/* Los estados controlados por JavaScript deben prevalecer sobre los componentes. */
+.hidden { display: none !important; }
