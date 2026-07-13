@@ -85,22 +85,84 @@ function publicUser(user) {
   return { id: user.id, email: user.email, name: user.name, role: user.role };
 }
 
-function documentRows(user) {
-  if (user.role === 'admin') {
-    return database.prepare(`
-      SELECT documents.*, users.name AS tenant_name
-      FROM documents
-      LEFT JOIN users ON users.id = documents.tenant_id
-      ORDER BY documents.created_at DESC
-    `).all();
+function documentPage(user, searchParams) {
+  const requestedPage = Number(searchParams.get('page') || 1);
+  if (!Number.isSafeInteger(requestedPage) || requestedPage < 1) {
+    throw new HttpError(400, 'La página solicitada no es válida.');
   }
-  return database.prepare(`
+
+  const kind = searchParams.get('kind');
+  const status = searchParams.get('status');
+  const utilityType = searchParams.get('utilityType');
+  if (kind && !['invoice', 'contract', 'other'].includes(kind)) {
+    throw new HttpError(400, 'Filtro de documento no válido.');
+  }
+  if (status && !['information', 'pending', 'paid', 'overdue'].includes(status)) {
+    throw new HttpError(400, 'Filtro de estado no válido.');
+  }
+  if (utilityType && !['electricity', 'water', 'gas', 'other'].includes(utilityType)) {
+    throw new HttpError(400, 'Filtro de suministro no válido.');
+  }
+
+  const accessConditions = [];
+  const accessParameters = [];
+  if (user.role !== 'admin') {
+    accessConditions.push('(documents.visibility = ? OR documents.tenant_id = ?)');
+    accessParameters.push('shared', user.id);
+  }
+  const filterConditions = [...accessConditions];
+  const filterParameters = [...accessParameters];
+  if (kind) {
+    filterConditions.push('documents.kind = ?');
+    filterParameters.push(kind);
+  }
+  if (status) {
+    filterConditions.push('documents.status = ?');
+    filterParameters.push(status);
+  }
+  if (utilityType) {
+    filterConditions.push('documents.kind = ? AND documents.utility_type = ?');
+    filterParameters.push('invoice', utilityType);
+  }
+
+  const accessWhere = accessConditions.length ? `WHERE ${accessConditions.join(' AND ')}` : '';
+  const filterWhere = filterConditions.length ? `WHERE ${filterConditions.join(' AND ')}` : '';
+  const pageSize = 10;
+  const countRow = database.prepare(`SELECT COUNT(*) AS total FROM documents ${filterWhere}`)
+    .get(...filterParameters);
+  const total = Number(countRow.total);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(requestedPage, totalPages);
+  const rows = database.prepare(`
     SELECT documents.*, users.name AS tenant_name
     FROM documents
     LEFT JOIN users ON users.id = documents.tenant_id
-    WHERE documents.visibility = 'shared' OR documents.tenant_id = ?
-    ORDER BY documents.created_at DESC
-  `).all(user.id);
+    ${filterWhere}
+    ORDER BY documents.created_at DESC, documents.id DESC
+    LIMIT ? OFFSET ?
+  `).all(...filterParameters, pageSize, (page - 1) * pageSize);
+  const summaryRow = database.prepare(`
+    SELECT
+      COUNT(*) AS document_count,
+      SUM(CASE WHEN kind = 'invoice' AND status IN ('pending', 'overdue') THEN 1 ELSE 0 END)
+        AS pending_invoice_count,
+      COALESCE(SUM(CASE
+        WHEN kind = 'invoice' AND status IN ('pending', 'overdue') THEN amount_cents
+        ELSE 0
+      END), 0) AS pending_amount_cents
+    FROM documents
+    ${accessWhere}
+  `).get(...accessParameters);
+
+  return {
+    documents: rows.map(publicDocument),
+    pagination: { page, pageSize, total, totalPages },
+    summary: {
+      documentCount: Number(summaryRow.document_count),
+      pendingInvoiceCount: Number(summaryRow.pending_invoice_count),
+      pendingAmountCents: Number(summaryRow.pending_amount_cents),
+    },
+  };
 }
 
 function publicDocument(row) {
@@ -192,7 +254,7 @@ async function handleApi(request, response, requestUrl) {
 
   if (pathname === '/api/documents' && request.method === 'GET') {
     const user = requireUser(request);
-    sendJson(response, 200, { documents: documentRows(user).map(publicDocument) });
+    sendJson(response, 200, documentPage(user, searchParams));
     return;
   }
 

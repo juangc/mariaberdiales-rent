@@ -11,6 +11,8 @@ SQLite.
 - Contratos privados asignados a una única persona.
 - Seguimiento del estado, importe y suministro de cada factura: luz, agua, gas
   u otros.
+- Listado paginado desde el servidor, con 10 documentos por página y filtros
+  combinables.
 - Panel de administración para crear usuarios y publicar, editar o eliminar documentos.
 - PDF almacenados fuera del directorio público y de Git.
 

@@ -7,6 +7,8 @@ const state = {
     status: 'all',
     utilityType: 'all',
   },
+  pagination: { page: 1, pageSize: 10, total: 0, totalPages: 1 },
+  summary: { documentCount: 0, pendingInvoiceCount: 0, pendingAmountCents: 0 },
   editingDocumentId: null,
 };
 
@@ -17,7 +19,8 @@ const elements = Object.fromEntries([
   'documentSubmitButton', 'documentUtilityFilter', 'documentUtilityType', 'documentVisibility',
   'emptyDocuments', 'emptyDocumentsText', 'emptyDocumentsTitle',
   'loginForm', 'loginMessage', 'loginView',
-  'logoutButton', 'tenantField', 'userForm', 'userList', 'userMessage', 'welcomeTitle',
+  'logoutButton', 'nextPageButton', 'pagination', 'paginationInfo', 'previousPageButton',
+  'tenantField', 'userForm', 'userList', 'userMessage', 'welcomeTitle',
   'utilityTypeField',
 ].map((id) => [id, document.getElementById(id)]));
 
@@ -80,14 +83,10 @@ function textElement(tag, className, text) {
 
 function renderSummary() {
   elements.documentSummary.replaceChildren();
-  const invoices = state.documents.filter((documentItem) => documentItem.kind === 'invoice');
-  const pendingTotal = invoices
-    .filter((documentItem) => ['pending', 'overdue'].includes(documentItem.status))
-    .reduce((total, documentItem) => total + (documentItem.amountCents || 0), 0);
   const values = [
-    ['Documentos', String(state.documents.length)],
-    ['Facturas pendientes', String(invoices.filter((item) => ['pending', 'overdue'].includes(item.status)).length)],
-    ['Importe pendiente', formatMoney(pendingTotal)],
+    ['Documentos', String(state.summary.documentCount)],
+    ['Facturas pendientes', String(state.summary.pendingInvoiceCount)],
+    ['Importe pendiente', formatMoney(state.summary.pendingAmountCents)],
   ];
   values.forEach(([label, value]) => {
     const card = document.createElement('div');
@@ -95,6 +94,14 @@ function renderSummary() {
     card.append(textElement('span', 'summary-label', label), textElement('strong', 'summary-value', value));
     elements.documentSummary.append(card);
   });
+}
+
+function renderPagination() {
+  const { page, total, totalPages } = state.pagination;
+  elements.pagination.classList.toggle('hidden', totalPages <= 1);
+  elements.paginationInfo.textContent = `Página ${page} de ${totalPages} · ${total} documentos`;
+  elements.previousPageButton.disabled = page <= 1;
+  elements.nextPageButton.disabled = page >= totalPages;
 }
 
 function documentCard(documentItem) {
@@ -173,20 +180,16 @@ function documentCard(documentItem) {
 
 function renderDocuments() {
   elements.documentList.replaceChildren();
-  const visible = state.documents.filter((item) => (
-    (state.filters.kind === 'all' || item.kind === state.filters.kind)
-    && (state.filters.status === 'all' || item.status === state.filters.status)
-    && (state.filters.utilityType === 'all' || item.utilityType === state.filters.utilityType)
-  ));
-  visible.forEach((item) => elements.documentList.append(documentCard(item)));
-  elements.emptyDocuments.classList.toggle('hidden', visible.length > 0);
-  elements.emptyDocumentsTitle.textContent = state.documents.length
+  state.documents.forEach((item) => elements.documentList.append(documentCard(item)));
+  elements.emptyDocuments.classList.toggle('hidden', state.documents.length > 0);
+  elements.emptyDocumentsTitle.textContent = state.summary.documentCount
     ? 'Sin resultados'
     : 'Todavía no hay documentos';
-  elements.emptyDocumentsText.textContent = state.documents.length
+  elements.emptyDocumentsText.textContent = state.summary.documentCount
     ? 'No hay documentos que coincidan con los filtros seleccionados.'
     : 'Cuando se publique una factura o un contrato aparecerá aquí.';
   renderSummary();
+  renderPagination();
 }
 
 function renderUsers() {
@@ -274,9 +277,24 @@ function startDocumentEdit(documentItem) {
 }
 
 async function loadDocuments() {
-  const payload = await api('/api/documents');
+  const params = new URLSearchParams({ page: String(state.pagination.page) });
+  Object.entries(state.filters).forEach(([field, value]) => {
+    if (value !== 'all') params.set(field, value);
+  });
+  const payload = await api(`/api/documents?${params}`);
   state.documents = payload.documents;
+  state.pagination = payload.pagination;
+  state.summary = payload.summary;
   renderDocuments();
+}
+
+async function applyFilters() {
+  state.pagination.page = 1;
+  try {
+    await loadDocuments();
+  } catch (error) {
+    window.alert(error.message);
+  }
 }
 
 async function loadUsers() {
@@ -328,12 +346,12 @@ elements.documentFilter.addEventListener('change', () => {
     state.filters.utilityType = 'all';
     elements.documentUtilityFilter.value = 'all';
   }
-  renderDocuments();
+  applyFilters();
 });
 
 elements.documentStatusFilter.addEventListener('change', () => {
   state.filters.status = elements.documentStatusFilter.value;
-  renderDocuments();
+  applyFilters();
 });
 
 elements.documentUtilityFilter.addEventListener('change', () => {
@@ -342,7 +360,27 @@ elements.documentUtilityFilter.addEventListener('change', () => {
     state.filters.kind = 'invoice';
     elements.documentFilter.value = 'invoice';
   }
-  renderDocuments();
+  applyFilters();
+});
+
+elements.previousPageButton.addEventListener('click', async () => {
+  if (state.pagination.page <= 1) return;
+  state.pagination.page -= 1;
+  try {
+    await loadDocuments();
+  } catch (error) {
+    window.alert(error.message);
+  }
+});
+
+elements.nextPageButton.addEventListener('click', async () => {
+  if (state.pagination.page >= state.pagination.totalPages) return;
+  state.pagination.page += 1;
+  try {
+    await loadDocuments();
+  } catch (error) {
+    window.alert(error.message);
+  }
 });
 
 elements.documentKind.addEventListener('change', () => {

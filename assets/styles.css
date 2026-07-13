@@ -282,6 +282,9 @@ a:hover { @apply text-ink; }
 .document-edit-button { @apply rounded-lg border border-black/15 bg-white px-3 py-2.5 font-mono text-xs font-bold text-ink; }
 .compact-select { @apply min-h-[38px] w-auto py-2; }
 .portal-empty { @apply rounded-xl border border-dashed border-black/20 bg-white/40 p-10 text-center text-ink/70; }
+.document-pagination { @apply mt-5 flex items-center justify-between gap-3; }
+.pagination-button { @apply rounded-lg border border-black/15 bg-white px-4 py-2.5 font-mono text-xs font-bold text-ink transition hover:bg-cream disabled:cursor-not-allowed disabled:opacity-40; }
+.pagination-info { @apply text-center font-mono text-[10px] font-bold tracking-[0.04em] text-ink/60 uppercase; }
 .admin-section { @apply mt-16 border-t border-black/10 pt-12; }
 .admin-heading { @apply mb-6 flex flex-col gap-3; }
 .admin-note { @apply max-w-[560px] text-sm leading-relaxed text-ink/70; }

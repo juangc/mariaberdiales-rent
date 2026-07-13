@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>Área privada · María Berdiales 10</title>
-  <link rel="stylesheet" href="assets/tailwind.css?v=20260713-3">
-  <script src="assets/portal.js?v=20260713-3" defer></script>
+  <link rel="stylesheet" href="assets/tailwind.css?v=20260713-4">
+  <script src="assets/portal.js?v=20260713-4" defer></script>
 </head>
 <body class="portal-body">
   <header class="portal-header">
@@ -81,6 +81,11 @@
         <p id="emptyDocumentsTitle" class="portal-card-title">Todavía no hay documentos</p>
         <p id="emptyDocumentsText">Cuando se publique una factura o un contrato aparecerá aquí.</p>
       </div>
+      <nav id="pagination" class="document-pagination hidden" aria-label="Paginación de documentos">
+        <button id="previousPageButton" class="pagination-button" type="button">Anterior</button>
+        <span id="paginationInfo" class="pagination-info" aria-live="polite"></span>
+        <button id="nextPageButton" class="pagination-button" type="button">Siguiente</button>
+      </nav>
 
       <section id="adminView" class="admin-section hidden">
         <div class="admin-heading">
