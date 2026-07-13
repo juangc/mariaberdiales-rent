@@ -1,0 +1,13 @@
+{
+  "name": "maria-berdiales-10-2b",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build:css": "tailwind -c ./tailwind.config.cjs -i ./assets/styles.css -o ./assets/tailwind.css --minify",
+    "build": "npm run build:css && node scripts/build.mjs"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.2.7"
+  }
+}
