@@ -111,7 +111,10 @@ a:hover { @apply text-ink; }
 }
 .hero-contours { @apply absolute inset-0 h-full w-full text-[var(--hero-contour)] opacity-[0.16]; }
 .hero-inner { @apply relative z-[2] mx-auto max-w-[1000px]; }
-.hero-meta { @apply flex items-center justify-between font-mono text-[11px] tracking-[0.14em] text-[var(--hero-eyebrow)] uppercase; }
+.hero-topbar { @apply flex items-center justify-between gap-4; }
+.hero-meta { @apply flex min-w-0 flex-1 items-center justify-between font-mono text-[11px] tracking-[0.14em] text-[var(--hero-eyebrow)] uppercase; }
+.hero-coordinates { @apply hidden; }
+.hero-private-access { @apply shrink-0 rounded-lg border border-cream/30 bg-accent px-3 py-2 font-mono text-[10px] font-bold tracking-[0.06em] text-cream uppercase no-underline shadow-lg transition hover:border-cream/60 hover:text-cream hover:brightness-95; }
 .hero-title { @apply mt-[18px] mb-0 font-display text-5xl leading-[0.9] font-extrabold tracking-[0.005em] text-[var(--hero-ink)] uppercase; }
 .hero-title-secondary { @apply font-semibold text-[var(--hero-italic)]; }
 .hero-description { @apply mt-3.5 mb-0 max-w-[330px] text-[14.5px] leading-[1.55] text-[var(--hero-sub)]; }
@@ -149,14 +152,6 @@ a:hover { @apply text-ink; }
   background-color: var(--pill-active-bg);
   border-color: var(--pill-active-bg);
 }
-.nav-pill-private {
-  @apply font-semibold;
-  color: var(--color-cream);
-  background-color: var(--color-blue);
-  border-color: var(--color-blue);
-}
-.nav-pill-private:hover { color: var(--color-cream); }
-
 .sections-inner { @apply mx-auto max-w-[1000px] px-[22px] pt-1 pb-[30px]; }
 .content-section { @apply mt-6 scroll-mt-[60px] border-t border-black/10 pt-[30px] pb-1; }
 .content-section:first-child { @apply mt-0 border-0; }
@@ -303,6 +298,8 @@ a:hover { @apply text-ink; }
 @media (min-width: 55rem) {
   .page { @apply max-w-[1180px]; }
   .hero { @apply px-14 pt-16 pb-[58px]; }
+  .hero-coordinates { @apply inline; }
+  .hero-private-access { @apply px-4 py-2.5 text-[11px]; }
   .hero-grid { @apply grid grid-cols-[1.05fr_400px] items-center gap-[52px]; }
   .hero-title { @apply mt-3.5 text-[74px]; }
   .hero-gauge { @apply mt-0; }

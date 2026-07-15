@@ -51,9 +51,10 @@ async function main() {
   const expectedScriptBlocks = countScriptBlocks(html);
 
   // Tailwind se compila antes de este script y su resultado se inserta aqui.
-  const stylesheetPattern = /<link\s+rel="stylesheet"\s+href="(assets\/[^"]+\.css)"\s*>/g;
-  const stylesheetPaths = [...html.matchAll(stylesheetPattern)].map((match) => match[1]);
-  for (const relativePath of stylesheetPaths) {
+  const stylesheetPattern = /<link\s+rel="stylesheet"\s+href="(assets\/[^"]+\.css(?:\?[^"]*)?)"\s*>/g;
+  const stylesheetResources = [...html.matchAll(stylesheetPattern)].map((match) => match[1]);
+  for (const resourcePath of stylesheetResources) {
+    const relativePath = resourcePath.split('?')[0];
     const stylesheetDirectory = path.posix.dirname(relativePath);
     const source = (await readFile(resolve(root, relativePath), 'utf8')).replace(
       /url\((["']?)(?!data:|https?:|\/)([^)"']+)\1\)/g,
@@ -61,20 +62,21 @@ async function main() {
     );
     html = replaceFirstLiteral(
       html,
-      `<link rel="stylesheet" href="${relativePath}">`,
+      `<link rel="stylesheet" href="${resourcePath}">`,
       `<style>${source}</style>`,
     );
   }
 
   // Los scripts locales se insertan en el mismo orden en el que aparecen.
-  const scriptPattern = /<script\s+src="(assets\/[^"]+\.js)"\s*><\/script>/g;
-  const scriptPaths = [...html.matchAll(scriptPattern)].map((match) => match[1]);
-  for (const relativePath of scriptPaths) {
+  const scriptPattern = /<script\s+src="(assets\/[^"]+\.js(?:\?[^"]*)?)"\s*><\/script>/g;
+  const scriptResources = [...html.matchAll(scriptPattern)].map((match) => match[1]);
+  for (const resourcePath of scriptResources) {
+    const relativePath = resourcePath.split('?')[0];
     const source = await readFile(resolve(root, relativePath), 'utf8');
     const dataUrl = `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
     html = replaceFirstLiteral(
       html,
-      `<script src="${relativePath}"></script>`,
+      `<script src="${resourcePath}"></script>`,
       `<script src="${dataUrl}"></script>`,
     );
   }
@@ -110,7 +112,7 @@ async function main() {
   await mkdir(resolve(root, 'dist'), { recursive: true });
   await writeFile(outputPath, html);
   console.log(`Bundle creado en ${outputPath}`);
-  console.log(`${stylesheetPaths.length} estilos, ${scriptPaths.length} scripts y ${assetPaths.length} recursos embebidos`);
+  console.log(`${stylesheetResources.length} estilos, ${scriptResources.length} scripts y ${assetPaths.length} recursos embebidos`);
 }
 
 main().catch((error) => {

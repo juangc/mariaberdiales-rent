@@ -10,6 +10,7 @@ const tailwind = spawn(executable, [
   '-i', './assets/styles.css',
   '-o', './assets/tailwind.css',
   '--watch',
+  '--minify',
 ], {
   cwd: root,
   stdio: 'inherit',

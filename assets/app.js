@@ -52,7 +52,10 @@ function enableSectionNavigation() {
 
     const link = links[activeId];
     if (link && rail) {
-      rail.scrollTo({ left: Math.max(0, link.offsetLeft - 16), behavior: 'smooth' });
+      const railLeft = rail.getBoundingClientRect().left;
+      const linkLeft = link.getBoundingClientRect().left;
+      const targetLeft = rail.scrollLeft + linkLeft - railLeft - 16;
+      rail.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
     }
   };
 
