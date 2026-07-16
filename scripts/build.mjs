@@ -82,7 +82,7 @@ async function main() {
   }
 
   // Las fuentes e imagenes se convierten en data URI para mantener un unico fichero.
-  const assetPattern = /assets\/[A-Za-z0-9_./-]+\.(?:jpe?g|png|svg|webp|woff2)/g;
+  const assetPattern = /assets\/[\p{L}\p{N}_./-]+\.(?:jpe?g|png|svg|webp|woff2)/gu;
   const assetPaths = [...new Set(html.match(assetPattern) || [])];
   for (const relativePath of assetPaths) {
     const mime = mimeTypes[extname(relativePath).toLowerCase()];

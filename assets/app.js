@@ -90,7 +90,7 @@ function enableSectionNavigation() {
 function enableRevealAnimations() {
   if (!('IntersectionObserver' in window)) return;
 
-  const elements = document.querySelectorAll('.content-section > *, .footer > *');
+  const elements = document.querySelectorAll('.rooms-showcase > *, .content-section > *, .footer > *');
   if (!elements.length) return;
 
   document.documentElement.classList.add('has-reveal');
