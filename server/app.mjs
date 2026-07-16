@@ -202,6 +202,16 @@ function parseOptionalInteger(value, field) {
   return parsed;
 }
 
+function validateTenantPassword(password, confirmation) {
+  if (password !== confirmation) throw new HttpError(400, 'Las contraseñas no coinciden.');
+  if (password.length < 8 || password.length > 128) {
+    throw new HttpError(400, 'La contraseña debe tener entre 8 y 128 caracteres.');
+  }
+  if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+    throw new HttpError(400, 'La contraseña debe incluir mayúsculas, minúsculas y números.');
+  }
+}
+
 async function handleApi(request, response, requestUrl) {
   const { pathname, searchParams } = requestUrl;
   if (request.method !== 'GET' && request.method !== 'HEAD') requireSameOrigin(request);
@@ -304,10 +314,24 @@ async function handleApi(request, response, requestUrl) {
   if (pathname === '/api/admin/users' && request.method === 'GET') {
     await requireAdmin(request);
     const users = await prisma.user.findMany({
-      select: { id: true, email: true, name: true, role: true, active: true, createdAt: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        active: true,
+        createdAt: true,
+        _count: { select: { documents: true } },
+      },
       orderBy: [{ role: 'asc' }, { name: 'asc' }],
     });
-    sendJson(response, 200, { users: users.map((user) => ({ ...user, id: Number(user.id) })) });
+    sendJson(response, 200, {
+      users: users.map(({ _count, ...user }) => ({
+        ...user,
+        id: Number(user.id),
+        documentCount: _count.documents,
+      })),
+    });
     return;
   }
 
@@ -317,11 +341,10 @@ async function handleApi(request, response, requestUrl) {
     const email = String(body.email || '').trim().toLowerCase();
     const name = String(body.name || '').trim();
     const password = String(body.password || '');
-    if (!/^\S+@\S+\.\S+$/.test(email)) throw new HttpError(400, 'Introduce un correo válido.');
-    if (name.length < 2) throw new HttpError(400, 'Introduce el nombre del inquilino.');
-    if (password.length < 15 || password.length > 128) {
-      throw new HttpError(400, 'La contraseña debe tener entre 15 y 128 caracteres.');
-    }
+    const passwordConfirmation = String(body.passwordConfirmation || '');
+    if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254) throw new HttpError(400, 'Introduce un correo válido.');
+    if (name.length < 2 || name.length > 160) throw new HttpError(400, 'Introduce el nombre del inquilino.');
+    validateTenantPassword(password, passwordConfirmation);
     const hashed = await hashPassword(password);
     try {
       const user = await prisma.user.create({
@@ -345,15 +368,71 @@ async function handleApi(request, response, requestUrl) {
 
   const userStatusMatch = pathname.match(/^\/api\/admin\/users\/(\d+)$/);
   if (userStatusMatch && request.method === 'PATCH') {
-    const admin = await requireAdmin(request);
+    await requireAdmin(request);
     const userId = BigInt(userStatusMatch[1]);
     const body = await readJson(request);
-    const active = body.active ? 1 : 0;
-    if (userId === admin.id && active === 0) throw new HttpError(400, 'No puedes desactivar tu propia cuenta.');
-    const result = await prisma.user.updateMany({ where: { id: userId }, data: { active: Boolean(active) } });
-    if (!result.count) throw new HttpError(404, 'Usuario no encontrado.');
-    if (!active) await prisma.session.deleteMany({ where: { userId } });
-    sendJson(response, 200, { ok: true });
+    const current = await prisma.user.findUnique({ where: { id: userId } });
+    if (!current) throw new HttpError(404, 'Usuario no encontrado.');
+    if (current.role !== 'tenant') throw new HttpError(403, 'Solo se pueden editar cuentas de inquilinos.');
+
+    const has = (field) => Object.prototype.hasOwnProperty.call(body, field);
+    const data = {};
+    if (has('name')) {
+      const name = String(body.name || '').trim();
+      if (name.length < 2 || name.length > 160) throw new HttpError(400, 'Introduce un nombre válido.');
+      data.name = name;
+    }
+    if (has('email')) {
+      const email = String(body.email || '').trim().toLowerCase();
+      if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254) throw new HttpError(400, 'Introduce un correo válido.');
+      data.email = email;
+    }
+    if (has('active')) {
+      if (typeof body.active !== 'boolean') throw new HttpError(400, 'El estado del usuario no es válido.');
+      data.active = body.active;
+    }
+    if (body.password) {
+      const password = String(body.password);
+      validateTenantPassword(password, String(body.passwordConfirmation || ''));
+      const hashed = await hashPassword(password);
+      data.passwordSalt = hashed.salt;
+      data.passwordHash = hashed.hash;
+    }
+    if (!Object.keys(data).length) throw new HttpError(400, 'No hay cambios para guardar.');
+
+    try {
+      const user = await prisma.user.update({ where: { id: userId }, data });
+      if (data.active === false || body.password) await prisma.session.deleteMany({ where: { userId } });
+      sendJson(response, 200, { user: publicUser(user) });
+    } catch (error) {
+      if (error.code === 'P2002') throw new HttpError(409, 'Ya existe un usuario con ese correo.');
+      throw error;
+    }
+    return;
+  }
+
+  if (userStatusMatch && request.method === 'DELETE') {
+    await requireAdmin(request);
+    const userId = BigInt(userStatusMatch[1]);
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { documents: { select: { storageName: true } } },
+    });
+    if (!user) throw new HttpError(404, 'Usuario no encontrado.');
+    if (user.role !== 'tenant') throw new HttpError(403, 'No se puede eliminar una cuenta administradora.');
+
+    await prisma.user.delete({ where: { id: userId } });
+    user.documents.forEach(({ storageName }) => {
+      const filePath = path.join(config.storagePath, storageName);
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+        } catch (error) {
+          console.error(`No se pudo eliminar el archivo ${storageName}:`, error);
+        }
+      }
+    });
+    sendJson(response, 200, { ok: true, deletedDocuments: user.documents.length });
     return;
   }
 

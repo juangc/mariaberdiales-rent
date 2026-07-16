@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>Área privada · María Berdiales 10</title>
-  <link rel="stylesheet" href="assets/tailwind.css?v=20260717-7">
+  <link rel="stylesheet" href="assets/tailwind.css?v=20260717-10">
   <script src="assets/vendor/qrcode.js" defer></script>
-  <script src="assets/portal.js?v=20260717-4" defer></script>
+  <script src="assets/portal.js?v=20260717-6" defer></script>
 </head>
 <body class="portal-body">
   <header class="portal-header">
@@ -167,23 +167,58 @@
             <p class="portal-eyebrow">Administración</p>
             <h2 class="portal-page-title">Gestionar el portal</h2>
           </div>
-          <p class="admin-note">Los contratos privados solo son visibles para el inquilino asignado.</p>
+          <p class="admin-note">Gestiona por separado los accesos de residentes y la documentación del piso.</p>
         </div>
 
-        <div class="admin-grid">
+        <nav id="adminSectionNav" class="admin-section-nav" aria-label="Secciones de administración">
+          <button id="adminUsersNavButton" class="admin-nav-pill is-active" type="button" data-admin-section="users" aria-pressed="true">Usuarios</button>
+          <button id="adminDocumentsNavButton" class="admin-nav-pill" type="button" data-admin-section="documents" aria-pressed="false">Documentos</button>
+        </nav>
+
+        <section id="adminUsersSection" class="admin-inner-section" aria-labelledby="adminUsersTitle">
+          <div class="admin-inner-heading">
+            <div>
+              <p class="portal-eyebrow">Accesos de residentes</p>
+              <h3 id="adminUsersTitle" class="portal-section-title">Creación y gestión de usuarios</h3>
+            </div>
+          </div>
+          <div class="admin-users-layout">
           <form id="userForm" class="portal-panel admin-card">
             <div>
               <p class="portal-card-kicker">Inquilinos</p>
-              <h3 class="portal-card-title">Crear acceso</h3>
+              <h3 id="userFormTitle" class="portal-card-title">Crear acceso</h3>
             </div>
             <label class="field-label">Nombre<input class="field-input" name="name" required minlength="2"></label>
             <label class="field-label">Correo<input class="field-input" name="email" type="email" required></label>
-            <label class="field-label">Contraseña temporal<input class="field-input" name="password" type="password" minlength="15" required></label>
-            <button class="portal-secondary-button" type="submit">Crear inquilino</button>
+            <label class="field-label">Contraseña<input id="userPassword" class="field-input" name="password" type="password" autocomplete="new-password" minlength="8" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}" required></label>
+            <label class="field-label">Repetir contraseña<input id="userPasswordConfirmation" class="field-input" name="passwordConfirmation" type="password" autocomplete="new-password" minlength="8" required></label>
+            <p class="field-help">Mínimo 8 caracteres, con mayúsculas, minúsculas y números.</p>
+            <div class="user-form-actions">
+              <button id="userSubmitButton" class="portal-secondary-button" type="submit">Crear inquilino</button>
+              <button id="userCancelButton" class="portal-quiet-button hidden" type="button">Cancelar edición</button>
+            </div>
             <p id="userMessage" class="form-message" role="status"></p>
           </form>
 
-          <form id="documentForm" class="portal-panel admin-card">
+            <div class="portal-panel users-panel">
+              <div>
+                <p class="portal-card-kicker">Cuentas</p>
+                <h3 class="portal-card-title">Usuarios registrados</h3>
+              </div>
+              <div id="userList" class="user-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="adminDocumentsSection" class="admin-inner-section hidden" aria-labelledby="adminDocumentsTitle">
+          <div class="admin-inner-heading">
+            <div>
+              <p class="portal-eyebrow">Archivo del piso</p>
+              <h3 id="adminDocumentsTitle" class="portal-section-title">Gestión de documentos</h3>
+            </div>
+            <button id="adminOpenDocumentsButton" class="portal-quiet-button" type="button">Abrir filtros y vista completa →</button>
+          </div>
+          <form id="documentForm" class="portal-panel admin-card admin-document-form">
             <div>
               <p class="portal-card-kicker">Archivo PDF</p>
               <h3 id="documentFormTitle" class="portal-card-title">Publicar documento</h3>
@@ -237,15 +272,21 @@
             </div>
             <p id="documentMessage" class="form-message" role="status"></p>
           </form>
-        </div>
-
-        <div class="portal-panel users-panel">
-          <div>
-            <p class="portal-card-kicker">Accesos</p>
-            <h3 class="portal-card-title">Usuarios</h3>
+          <div class="admin-published-documents">
+            <div class="admin-published-heading">
+              <div>
+                <p class="portal-card-kicker">Publicados</p>
+                <h3 class="portal-card-title">Documentos recientes</h3>
+              </div>
+              <span id="adminDocumentCount" class="overview-attention-count"></span>
+            </div>
+            <div id="adminDocumentList" class="document-list"></div>
+            <div id="adminEmptyDocuments" class="portal-empty hidden">
+              <p class="portal-card-title">Todavía no hay documentos</p>
+              <p>Publica el primer PDF desde el formulario superior.</p>
+            </div>
           </div>
-          <div id="userList" class="user-list"></div>
-        </div>
+        </section>
       </section>
     </section>
   </main>

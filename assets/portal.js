@@ -14,10 +14,15 @@ const state = {
   pagination: { page: 1, pageSize: 10, total: 0, totalPages: 1 },
   summary: { documentCount: 0, pendingInvoiceCount: 0, pendingAmountCents: 0 },
   editingDocumentId: null,
+  editingUserId: null,
+  activeAdminSection: 'users',
 };
 
 const elements = Object.fromEntries([
-  'adminNavButton', 'adminView', 'attentionDocumentCount', 'attentionDocumentList', 'attentionEmpty',
+  'adminDocumentCount', 'adminDocumentList', 'adminDocumentsNavButton', 'adminDocumentsSection',
+  'adminEmptyDocuments', 'adminNavButton', 'adminOpenDocumentsButton',
+  'adminSectionNav', 'adminUsersNavButton', 'adminUsersSection', 'adminView',
+  'attentionDocumentCount', 'attentionDocumentList', 'attentionEmpty',
   'attentionEmptyText', 'attentionEmptyTitle',
   'dashboardView', 'documentCancelButton', 'documentFile', 'documentFileField',
   'documentFilter', 'documentForm', 'documentFormTitle', 'documentKind', 'documentStatusFilter',
@@ -27,8 +32,9 @@ const elements = Object.fromEntries([
   'copyWifiPasswordButton', 'loginForm', 'loginMessage', 'loginView',
   'logoutButton', 'nextPageButton', 'overviewDocumentsButton', 'overviewNavButton', 'pagination', 'paginationInfo',
   'portalDocumentsSection', 'portalOverviewSection', 'portalSectionNav', 'previousPageButton',
-  'residentWifiQr', 'showWifiPasswordButton', 'tenantField', 'userForm', 'userList',
-  'userMessage', 'utilityTypeField', 'welcomeTitle', 'wifi', 'wifiMessage', 'wifiPassword',
+  'residentWifiQr', 'showWifiPasswordButton', 'tenantField', 'userCancelButton', 'userForm',
+  'userFormTitle', 'userList', 'userMessage', 'userPassword', 'userPasswordConfirmation',
+  'userSubmitButton', 'utilityTypeField', 'welcomeTitle', 'wifi', 'wifiMessage', 'wifiPassword',
   'wifiNavButton', 'wifiRecommendedSsid', 'wifiSecondarySsid',
 ].map((id) => [id, document.getElementById(id)]));
 
@@ -38,6 +44,10 @@ const portalSections = {
   wifi: { panel: elements.wifi, button: elements.wifiNavButton, hash: '#wifi' },
   documents: { panel: elements.portalDocumentsSection, button: elements.documentsNavButton, hash: '#documentos' },
   admin: { panel: elements.adminView, button: elements.adminNavButton, hash: '#administracion' },
+};
+const adminSections = {
+  users: { panel: elements.adminUsersSection, button: elements.adminUsersNavButton },
+  documents: { panel: elements.adminDocumentsSection, button: elements.adminDocumentsNavButton },
 };
 
 async function api(url, options = {}) {
@@ -189,6 +199,17 @@ async function showPortalSection(requestedSection, updateLocation = true) {
   }
 }
 
+function showAdminSection(requestedSection) {
+  const sectionName = adminSections[requestedSection] ? requestedSection : 'users';
+  state.activeAdminSection = sectionName;
+  Object.entries(adminSections).forEach(([name, section]) => {
+    const active = name === sectionName;
+    section.panel.classList.toggle('hidden', !active);
+    section.button.classList.toggle('is-active', active);
+    section.button.setAttribute('aria-pressed', String(active));
+  });
+}
+
 function renderSummary() {
   elements.documentSummary.replaceChildren();
   const values = [
@@ -327,10 +348,20 @@ function documentCard(documentItem) {
   return article;
 }
 
+function renderDocumentList(container) {
+  container.replaceChildren(...state.documents.map(documentCard));
+}
+
 function renderDocuments() {
-  elements.documentList.replaceChildren();
-  state.documents.forEach((item) => elements.documentList.append(documentCard(item)));
-  elements.emptyDocuments.classList.toggle('hidden', state.documents.length > 0);
+  const hasDocuments = state.documents.length > 0;
+  renderDocumentList(elements.documentList);
+  renderDocumentList(elements.adminDocumentList);
+  elements.emptyDocuments.classList.toggle('hidden', hasDocuments);
+  elements.adminDocumentList.classList.toggle('hidden', !hasDocuments);
+  elements.adminEmptyDocuments.classList.toggle('hidden', hasDocuments);
+  elements.adminDocumentCount.textContent = state.pagination.total === 1
+    ? '1 documento'
+    : `${state.pagination.total} documentos`;
   elements.emptyDocumentsTitle.textContent = state.summary.documentCount
     ? 'Sin resultados'
     : 'Todavía no hay documentos';
@@ -342,20 +373,60 @@ function renderDocuments() {
   renderPagination();
 }
 
+function resetUserForm() {
+  state.editingUserId = null;
+  elements.userForm.reset();
+  elements.userFormTitle.textContent = 'Crear acceso';
+  elements.userSubmitButton.textContent = 'Crear inquilino';
+  elements.userCancelButton.classList.add('hidden');
+  elements.userPassword.required = true;
+  elements.userPasswordConfirmation.required = true;
+  elements.userPassword.placeholder = '';
+  elements.userPasswordConfirmation.placeholder = '';
+  setMessage(elements.userMessage, '');
+}
+
+function startUserEdit(user) {
+  state.editingUserId = user.id;
+  elements.userForm.elements.name.value = user.name;
+  elements.userForm.elements.email.value = user.email;
+  elements.userPassword.value = '';
+  elements.userPasswordConfirmation.value = '';
+  elements.userPassword.required = false;
+  elements.userPasswordConfirmation.required = false;
+  elements.userPassword.placeholder = 'Dejar en blanco para conservarla';
+  elements.userPasswordConfirmation.placeholder = 'Repetir solo si se cambia';
+  elements.userFormTitle.textContent = 'Editar usuario';
+  elements.userSubmitButton.textContent = 'Guardar cambios';
+  elements.userCancelButton.classList.remove('hidden');
+  setMessage(elements.userMessage, `Editando a ${user.name}.`);
+  showAdminSection('users');
+  elements.userForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function renderUsers() {
   elements.userList.replaceChildren();
   state.users.forEach((user) => {
     const row = document.createElement('div');
     row.className = 'user-row';
     const identity = document.createElement('div');
+    identity.className = 'user-identity';
     identity.append(
       textElement('strong', 'user-name', user.name),
       textElement('span', 'user-email', user.email),
     );
+    const status = textElement(
+      'span',
+      `user-status ${user.active ? 'is-active' : 'is-disabled'}`,
+      user.active ? 'Activo' : 'Deshabilitado',
+    );
     const meta = document.createElement('div');
     meta.className = 'user-actions';
-    meta.append(textElement('span', 'user-role', user.role === 'admin' ? 'Administrador' : 'Inquilino'));
+    meta.append(status, textElement('span', 'user-role', user.role === 'admin' ? 'Administrador' : 'Inquilino'));
     if (user.role === 'tenant') {
+      const edit = textElement('button', 'portal-quiet-button', 'Editar');
+      edit.type = 'button';
+      edit.addEventListener('click', () => startUserEdit(user));
       const toggle = textElement('button', 'portal-quiet-button', user.active ? 'Desactivar' : 'Activar');
       toggle.type = 'button';
       toggle.addEventListener('click', async () => {
@@ -369,7 +440,23 @@ function renderUsers() {
           window.alert(error.message);
         }
       });
-      meta.append(toggle);
+      const remove = textElement('button', 'user-delete-button', 'Eliminar');
+      remove.type = 'button';
+      remove.addEventListener('click', async () => {
+        const documents = Number(user.documentCount || 0);
+        const warning = documents
+          ? ` También se eliminarán ${documents} ${documents === 1 ? 'documento privado asociado' : 'documentos privados asociados'}.`
+          : '';
+        if (!window.confirm(`¿Eliminar definitivamente a “${user.name}”?${warning} Esta acción no se puede deshacer.`)) return;
+        try {
+          await api(`/api/admin/users/${user.id}`, { method: 'DELETE' });
+          if (state.editingUserId === user.id) resetUserForm();
+          await Promise.all([loadUsers(), loadDocuments()]);
+        } catch (error) {
+          window.alert(error.message);
+        }
+      });
+      meta.append(edit, toggle, remove);
     }
     row.append(identity, meta);
     elements.userList.append(row);
@@ -424,6 +511,7 @@ function startDocumentEdit(documentItem) {
   updateUtilityTypeField();
   setMessage(elements.documentMessage, `Editando “${documentItem.title}”.`);
   showPortalSection('admin').then(() => {
+    showAdminSection('documents');
     elements.documentForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 }
@@ -486,7 +574,14 @@ elements.portalSectionNav.addEventListener('click', (event) => {
   showPortalSection(button.dataset.portalSection);
 });
 
+elements.adminSectionNav.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-admin-section]');
+  if (!button) return;
+  showAdminSection(button.dataset.adminSection);
+});
+
 elements.overviewDocumentsButton.addEventListener('click', () => showPortalSection('documents'));
+elements.adminOpenDocumentsButton.addEventListener('click', () => showPortalSection('documents'));
 
 window.addEventListener('hashchange', () => {
   if (state.user) showPortalSection(sectionFromHash(), false);
@@ -586,18 +681,26 @@ elements.documentKind.addEventListener('change', () => {
 });
 elements.documentVisibility.addEventListener('change', updateTenantField);
 elements.documentCancelButton.addEventListener('click', resetDocumentForm);
+elements.userCancelButton.addEventListener('click', resetUserForm);
 
 elements.userForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  setMessage(elements.userMessage, 'Creando…');
+  const editing = state.editingUserId !== null;
+  setMessage(elements.userMessage, editing ? 'Guardando cambios…' : 'Creando…');
   const form = new FormData(elements.userForm);
+  const values = Object.fromEntries(form);
   try {
-    await api('/api/admin/users', {
-      method: 'POST',
-      body: JSON.stringify(Object.fromEntries(form)),
+    if (values.password !== values.passwordConfirmation) throw new Error('Las contraseñas no coinciden.');
+    if (editing && !values.password) {
+      delete values.password;
+      delete values.passwordConfirmation;
+    }
+    await api(editing ? `/api/admin/users/${state.editingUserId}` : '/api/admin/users', {
+      method: editing ? 'PATCH' : 'POST',
+      body: JSON.stringify(values),
     });
-    elements.userForm.reset();
-    setMessage(elements.userMessage, 'Inquilino creado correctamente.');
+    resetUserForm();
+    setMessage(elements.userMessage, editing ? 'Usuario actualizado correctamente.' : 'Inquilino creado correctamente.');
     await loadUsers();
   } catch (error) {
     setMessage(elements.userMessage, error.message, true);

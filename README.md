@@ -7,6 +7,9 @@ Prisma ORM y MySQL.
 ## Funcionalidad privada
 
 - Cuenta individual para cada inquilino.
+- Alta y edición de inquilinos con confirmación de contraseña y un mínimo de
+  8 caracteres que incluya mayúsculas, minúsculas y números.
+- Activación, desactivación y eliminación de cuentas desde Administración.
 - Facturas compartidas con todos los inquilinos activos.
 - Contratos privados asignados a una única persona.
 - Seguimiento del estado, importe y suministro de cada factura: luz, agua, gas
