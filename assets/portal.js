@@ -212,9 +212,15 @@ function showAdminSection(requestedSection) {
 
 function renderSummary() {
   elements.documentsNavCount.textContent = state.summary.documentCount;
+  elements.documentsNavCount.classList.toggle('hidden', state.summary.documentCount === 0);
+  elements.documentsNavCount.classList.toggle('needs-attention', state.summary.pendingInvoiceCount > 0);
   elements.documentsNavCount.setAttribute(
     'aria-label',
-    state.summary.documentCount === 1 ? '1 documento disponible' : `${state.summary.documentCount} documentos disponibles`,
+    `${state.summary.documentCount === 1 ? '1 documento disponible' : `${state.summary.documentCount} documentos disponibles`}${
+      state.summary.pendingInvoiceCount > 0
+        ? `, ${state.summary.pendingInvoiceCount} ${state.summary.pendingInvoiceCount === 1 ? 'requiere' : 'requieren'} revisión`
+        : ''
+    }`,
   );
   elements.documentSummary.replaceChildren();
   const values = [

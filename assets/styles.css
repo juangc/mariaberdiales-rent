@@ -1067,12 +1067,13 @@ body > .page {
   place-items: center;
   border-radius: 999px;
   padding: 0 6px;
-  background: var(--guide-accent);
+  background: var(--guide-ink);
   color: #fff;
   font-size: 9px;
   font-weight: 700;
   line-height: 1;
 }
+.portal-nav-badge.needs-attention { background: var(--guide-accent); }
 .portal-nav-pill:hover {
   border-color: var(--guide-ink);
   color: var(--guide-ink);
@@ -1086,6 +1087,10 @@ body > .page {
 .portal-nav-pill.is-active .portal-nav-badge {
   background: var(--guide-paper-light);
   color: var(--guide-ink);
+}
+.portal-nav-pill.is-active .portal-nav-badge.needs-attention {
+  background: var(--guide-accent);
+  color: #fff;
 }
 .portal-dashboard-section {
   min-height: min(620px, calc(100vh - 190px));
