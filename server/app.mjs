@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { config } from './config.mjs';
-import { database, ensureInitialAdmin, findUserBySession } from './database.mjs';
+import { ensureInitialAdmin, findUserBySession, prisma } from './database.mjs';
 import {
   HttpError,
   contentDisposition,
@@ -45,19 +45,19 @@ function securityHeaders(contentType = '') {
   return headers;
 }
 
-function requestUser(request) {
+async function requestUser(request) {
   const cookies = parseCookies(request);
   return findUserBySession(cookies[sessionCookieName()]);
 }
 
-function requireUser(request) {
-  const user = requestUser(request);
+async function requireUser(request) {
+  const user = await requestUser(request);
   if (!user) throw new HttpError(401, 'Inicia sesión para continuar.');
   return user;
 }
 
-function requireAdmin(request) {
-  const user = requireUser(request);
+async function requireAdmin(request) {
+  const user = await requireUser(request);
   if (user.role !== 'admin') throw new HttpError(403, 'No tienes permiso para realizar esta acción.');
   return user;
 }
@@ -82,10 +82,10 @@ function clearLoginAttempts(request) {
 }
 
 function publicUser(user) {
-  return { id: user.id, email: user.email, name: user.name, role: user.role };
+  return { id: Number(user.id), email: user.email, name: user.name, role: user.role };
 }
 
-function documentPage(user, searchParams) {
+async function documentPage(user, searchParams) {
   const requestedPage = Number(searchParams.get('page') || 1);
   if (!Number.isSafeInteger(requestedPage) || requestedPage < 1) {
     throw new HttpError(400, 'La página solicitada no es válida.');
@@ -105,82 +105,71 @@ function documentPage(user, searchParams) {
   }
 
   const accessConditions = [];
-  const accessParameters = [];
   if (user.role !== 'admin') {
-    accessConditions.push('(documents.visibility = ? OR documents.tenant_id = ?)');
-    accessParameters.push('shared', user.id);
+    accessConditions.push({ OR: [{ visibility: 'shared' }, { tenantId: user.id }] });
   }
   const filterConditions = [...accessConditions];
-  const filterParameters = [...accessParameters];
-  if (kind) {
-    filterConditions.push('documents.kind = ?');
-    filterParameters.push(kind);
-  }
-  if (status) {
-    filterConditions.push('documents.status = ?');
-    filterParameters.push(status);
-  }
+  if (kind) filterConditions.push({ kind });
+  if (status) filterConditions.push({ status });
   if (utilityType) {
-    filterConditions.push('documents.kind = ? AND documents.utility_type = ?');
-    filterParameters.push('invoice', utilityType);
+    filterConditions.push({ kind: 'invoice', utilityType });
   }
 
-  const accessWhere = accessConditions.length ? `WHERE ${accessConditions.join(' AND ')}` : '';
-  const filterWhere = filterConditions.length ? `WHERE ${filterConditions.join(' AND ')}` : '';
+  const accessWhere = accessConditions.length ? { AND: accessConditions } : {};
+  const filterWhere = filterConditions.length ? { AND: filterConditions } : {};
   const pageSize = 10;
-  const countRow = database.prepare(`SELECT COUNT(*) AS total FROM documents ${filterWhere}`)
-    .get(...filterParameters);
-  const total = Number(countRow.total);
+  const total = await prisma.document.count({ where: filterWhere });
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const page = Math.min(requestedPage, totalPages);
-  const rows = database.prepare(`
-    SELECT documents.*, users.name AS tenant_name
-    FROM documents
-    LEFT JOIN users ON users.id = documents.tenant_id
-    ${filterWhere}
-    ORDER BY documents.created_at DESC, documents.id DESC
-    LIMIT ? OFFSET ?
-  `).all(...filterParameters, pageSize, (page - 1) * pageSize);
-  const summaryRow = database.prepare(`
-    SELECT
-      COUNT(*) AS document_count,
-      SUM(CASE WHEN kind = 'invoice' AND status IN ('pending', 'overdue') THEN 1 ELSE 0 END)
-        AS pending_invoice_count,
-      COALESCE(SUM(CASE
-        WHEN kind = 'invoice' AND status IN ('pending', 'overdue') THEN amount_cents
-        ELSE 0
-      END), 0) AS pending_amount_cents
-    FROM documents
-    ${accessWhere}
-  `).get(...accessParameters);
+  const [rows, documentCount, pendingInvoices] = await Promise.all([
+    prisma.document.findMany({
+      where: filterWhere,
+      include: { tenant: { select: { name: true } } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: pageSize,
+      skip: (page - 1) * pageSize,
+    }),
+    prisma.document.count({ where: accessWhere }),
+    prisma.document.aggregate({
+      where: {
+        AND: [
+          ...accessConditions,
+          { kind: 'invoice' },
+          { status: { in: ['pending', 'overdue'] } },
+        ],
+      },
+      _count: { _all: true },
+      _sum: { amountCents: true },
+    }),
+  ]);
 
   return {
     documents: rows.map(publicDocument),
     pagination: { page, pageSize, total, totalPages },
     summary: {
-      documentCount: Number(summaryRow.document_count),
-      pendingInvoiceCount: Number(summaryRow.pending_invoice_count),
-      pendingAmountCents: Number(summaryRow.pending_amount_cents),
+      documentCount,
+      pendingInvoiceCount: pendingInvoices._count._all,
+      pendingAmountCents: Number(pendingInvoices._sum.amountCents || 0n),
     },
   };
 }
 
 function publicDocument(row) {
   return {
-    id: row.id,
+    id: Number(row.id),
     kind: row.kind,
-    utilityType: row.utility_type,
+    utilityType: row.utilityType,
     title: row.title,
     period: row.period,
-    amountCents: row.amount_cents,
-    dueDate: row.due_date,
+    amountCents: row.amountCents === null ? null : Number(row.amountCents),
+    dueDate: row.dueDate,
     status: row.status,
     visibility: row.visibility,
-    tenantId: row.tenant_id,
-    tenantName: row.tenant_name,
-    originalName: row.original_name,
-    sizeBytes: row.size_bytes,
-    createdAt: row.created_at,
+    tenantId: row.tenantId === null ? null : Number(row.tenantId),
+    tenantName: row.tenant?.name || null,
+    originalName: row.originalName,
+    sizeBytes: Number(row.sizeBytes),
+    createdAt: row.createdAt,
     fileUrl: `/api/documents/${row.id}/file`,
   };
 }
@@ -205,7 +194,7 @@ async function handleApi(request, response, requestUrl) {
   if (request.method !== 'GET' && request.method !== 'HEAD') requireSameOrigin(request);
 
   if (pathname === '/api/health' && request.method === 'GET') {
-    database.prepare('SELECT 1').get();
+    await prisma.$queryRaw`SELECT 1`;
     sendJson(response, 200, { ok: true });
     return;
   }
@@ -216,12 +205,12 @@ async function handleApi(request, response, requestUrl) {
     const email = String(body.email || '').trim().toLowerCase();
     const password = String(body.password || '');
     if (!password || password.length > 128) throw new HttpError(401, 'Correo o contraseña incorrectos.');
-    const user = database.prepare('SELECT * FROM users WHERE email = ? AND active = 1').get(email);
+    const user = await prisma.user.findFirst({ where: { email, active: true } });
     if (!user) {
       await hashPassword(password, Buffer.alloc(16, 1));
       throw new HttpError(401, 'Correo o contraseña incorrectos.');
     }
-    if (!(await verifyPassword(password, user.password_salt, user.password_hash))) {
+    if (!(await verifyPassword(password, user.passwordSalt, user.passwordHash))) {
       throw new HttpError(401, 'Correo o contraseña incorrectos.');
     }
 
@@ -229,10 +218,14 @@ async function handleApi(request, response, requestUrl) {
     const token = createSessionToken();
     const now = new Date();
     const expiresAt = new Date(now.getTime() + config.sessionDays * 86_400_000);
-    database.prepare(`
-      INSERT INTO sessions (token_hash, user_id, expires_at, created_at)
-      VALUES (?, ?, ?, ?)
-    `).run(digestToken(token), user.id, expiresAt.toISOString(), now.toISOString());
+    await prisma.session.create({
+      data: {
+        tokenHash: digestToken(token),
+        userId: user.id,
+        expiresAt: expiresAt.toISOString(),
+        createdAt: now.toISOString(),
+      },
+    });
     response.setHeader('Set-Cookie', serializeSessionCookie(token, config.sessionDays * 86_400));
     sendJson(response, 200, { user: publicUser(user) });
     return;
@@ -241,40 +234,40 @@ async function handleApi(request, response, requestUrl) {
   if (pathname === '/api/logout' && request.method === 'POST') {
     const cookies = parseCookies(request);
     const token = cookies[sessionCookieName()];
-    if (token) database.prepare('DELETE FROM sessions WHERE token_hash = ?').run(digestToken(token));
+    if (token) await prisma.session.deleteMany({ where: { tokenHash: digestToken(token) } });
     response.setHeader('Set-Cookie', serializeSessionCookie('', 0));
     sendJson(response, 200, { ok: true });
     return;
   }
 
   if (pathname === '/api/me' && request.method === 'GET') {
-    sendJson(response, 200, { user: publicUser(requireUser(request)) });
+    sendJson(response, 200, { user: publicUser(await requireUser(request)) });
     return;
   }
 
   if (pathname === '/api/documents' && request.method === 'GET') {
-    const user = requireUser(request);
-    sendJson(response, 200, documentPage(user, searchParams));
+    const user = await requireUser(request);
+    sendJson(response, 200, await documentPage(user, searchParams));
     return;
   }
 
   const fileMatch = pathname.match(/^\/api\/documents\/(\d+)\/file$/);
   if (fileMatch && request.method === 'GET') {
-    const user = requireUser(request);
-    const row = database.prepare('SELECT * FROM documents WHERE id = ?').get(Number(fileMatch[1]));
+    const user = await requireUser(request);
+    const row = await prisma.document.findUnique({ where: { id: BigInt(fileMatch[1]) } });
     if (!row) throw new HttpError(404, 'Documento no encontrado.');
-    if (user.role !== 'admin' && row.visibility !== 'shared' && row.tenant_id !== user.id) {
+    if (user.role !== 'admin' && row.visibility !== 'shared' && row.tenantId !== user.id) {
       throw new HttpError(403, 'No tienes acceso a este documento.');
     }
-    const filePath = path.resolve(config.storagePath, row.storage_name);
+    const filePath = path.resolve(config.storagePath, row.storageName);
     if (!filePath.startsWith(`${config.storagePath}${path.sep}`) || !fs.existsSync(filePath)) {
       throw new HttpError(404, 'El archivo ya no está disponible.');
     }
     response.writeHead(200, {
       ...securityHeaders('application/pdf'),
       'Content-Type': 'application/pdf',
-      'Content-Length': row.size_bytes,
-      'Content-Disposition': contentDisposition(row.original_name),
+      'Content-Length': Number(row.sizeBytes),
+      'Content-Disposition': contentDisposition(row.originalName),
       'Cache-Control': 'private, no-store',
     });
     fs.createReadStream(filePath).pipe(response);
@@ -282,17 +275,17 @@ async function handleApi(request, response, requestUrl) {
   }
 
   if (pathname === '/api/admin/users' && request.method === 'GET') {
-    requireAdmin(request);
-    const users = database.prepare(`
-      SELECT id, email, name, role, active, created_at AS createdAt
-      FROM users ORDER BY role, name
-    `).all();
-    sendJson(response, 200, { users });
+    await requireAdmin(request);
+    const users = await prisma.user.findMany({
+      select: { id: true, email: true, name: true, role: true, active: true, createdAt: true },
+      orderBy: [{ role: 'asc' }, { name: 'asc' }],
+    });
+    sendJson(response, 200, { users: users.map((user) => ({ ...user, id: Number(user.id) })) });
     return;
   }
 
   if (pathname === '/api/admin/users' && request.method === 'POST') {
-    requireAdmin(request);
+    await requireAdmin(request);
     const body = await readJson(request);
     const email = String(body.email || '').trim().toLowerCase();
     const name = String(body.name || '').trim();
@@ -304,13 +297,20 @@ async function handleApi(request, response, requestUrl) {
     }
     const hashed = await hashPassword(password);
     try {
-      const result = database.prepare(`
-        INSERT INTO users (email, name, password_salt, password_hash, role, active, created_at)
-        VALUES (?, ?, ?, ?, 'tenant', 1, ?)
-      `).run(email, name, hashed.salt, hashed.hash, new Date().toISOString());
-      sendJson(response, 201, { user: { id: Number(result.lastInsertRowid), email, name, role: 'tenant' } });
+      const user = await prisma.user.create({
+        data: {
+          email,
+          name,
+          passwordSalt: hashed.salt,
+          passwordHash: hashed.hash,
+          role: 'tenant',
+          active: true,
+          createdAt: new Date().toISOString(),
+        },
+      });
+      sendJson(response, 201, { user: { id: Number(user.id), email, name, role: 'tenant' } });
     } catch (error) {
-      if (String(error.message).includes('UNIQUE')) throw new HttpError(409, 'Ya existe un usuario con ese correo.');
+      if (error.code === 'P2002') throw new HttpError(409, 'Ya existe un usuario con ese correo.');
       throw error;
     }
     return;
@@ -318,20 +318,20 @@ async function handleApi(request, response, requestUrl) {
 
   const userStatusMatch = pathname.match(/^\/api\/admin\/users\/(\d+)$/);
   if (userStatusMatch && request.method === 'PATCH') {
-    const admin = requireAdmin(request);
-    const userId = Number(userStatusMatch[1]);
+    const admin = await requireAdmin(request);
+    const userId = BigInt(userStatusMatch[1]);
     const body = await readJson(request);
     const active = body.active ? 1 : 0;
     if (userId === admin.id && active === 0) throw new HttpError(400, 'No puedes desactivar tu propia cuenta.');
-    const result = database.prepare('UPDATE users SET active = ? WHERE id = ?').run(active, userId);
-    if (!result.changes) throw new HttpError(404, 'Usuario no encontrado.');
-    if (!active) database.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
+    const result = await prisma.user.updateMany({ where: { id: userId }, data: { active: Boolean(active) } });
+    if (!result.count) throw new HttpError(404, 'Usuario no encontrado.');
+    if (!active) await prisma.session.deleteMany({ where: { userId } });
     sendJson(response, 200, { ok: true });
     return;
   }
 
   if (pathname === '/api/admin/documents' && request.method === 'POST') {
-    requireAdmin(request);
+    await requireAdmin(request);
     const kind = searchParams.get('kind');
     const utilityType = searchParams.get('utilityType') || null;
     const title = String(searchParams.get('title') || '').trim();
@@ -354,7 +354,10 @@ async function handleApi(request, response, requestUrl) {
       throw new HttpError(400, 'Los documentos privados deben asignarse a un inquilino.');
     }
     if (tenantId) {
-      const tenant = database.prepare("SELECT id FROM users WHERE id = ? AND role = 'tenant'").get(tenantId);
+      const tenant = await prisma.user.findFirst({
+        where: { id: BigInt(tenantId), role: 'tenant' },
+        select: { id: true },
+      });
       if (!tenant) throw new HttpError(400, 'El inquilino seleccionado no existe.');
     }
     if (request.headers['content-type'] !== 'application/pdf') {
@@ -368,27 +371,25 @@ async function handleApi(request, response, requestUrl) {
     const storagePath = path.join(config.storagePath, storageName);
     fs.writeFileSync(storagePath, contents, { flag: 'wx', mode: 0o600 });
     try {
-      const result = database.prepare(`
-        INSERT INTO documents (
-          kind, utility_type, title, period, amount_cents, due_date, status, visibility, tenant_id,
-          storage_name, original_name, mime_type, size_bytes, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'application/pdf', ?, ?)
-      `).run(
-        kind,
-        kind === 'invoice' ? utilityType : null,
-        title,
-        searchParams.get('period') || null,
-        amountCents,
-        dueDate,
-        status,
-        visibility,
-        tenantId,
-        storageName,
-        safeDownloadName(decodeFileName(request.headers['x-file-name'])),
-        contents.length,
-        new Date().toISOString(),
-      );
-      sendJson(response, 201, { id: Number(result.lastInsertRowid) });
+      const document = await prisma.document.create({
+        data: {
+          kind,
+          utilityType: kind === 'invoice' ? utilityType : null,
+          title,
+          period: searchParams.get('period') || null,
+          amountCents: amountCents === null ? null : BigInt(amountCents),
+          dueDate,
+          status,
+          visibility,
+          tenantId: tenantId === null ? null : BigInt(tenantId),
+          storageName,
+          originalName: safeDownloadName(decodeFileName(request.headers['x-file-name'])),
+          mimeType: 'application/pdf',
+          sizeBytes: BigInt(contents.length),
+          createdAt: new Date().toISOString(),
+        },
+      });
+      sendJson(response, 201, { id: Number(document.id) });
     } catch (error) {
       fs.unlinkSync(storagePath);
       throw error;
@@ -398,27 +399,27 @@ async function handleApi(request, response, requestUrl) {
 
   const documentMatch = pathname.match(/^\/api\/admin\/documents\/(\d+)$/);
   if (documentMatch && request.method === 'PATCH') {
-    requireAdmin(request);
-    const documentId = Number(documentMatch[1]);
-    const current = database.prepare('SELECT * FROM documents WHERE id = ?').get(documentId);
+    await requireAdmin(request);
+    const documentId = BigInt(documentMatch[1]);
+    const current = await prisma.document.findUnique({ where: { id: documentId } });
     if (!current) throw new HttpError(404, 'Documento no encontrado.');
     const body = await readJson(request);
     const has = (field) => Object.prototype.hasOwnProperty.call(body, field);
     const kind = has('kind') ? String(body.kind) : current.kind;
     const utilityType = has('utilityType')
       ? (body.utilityType ? String(body.utilityType) : null)
-      : current.utility_type;
+      : current.utilityType;
     const title = has('title') ? String(body.title || '').trim() : current.title;
     const visibility = has('visibility') ? String(body.visibility) : current.visibility;
     const tenantId = has('tenantId')
       ? parseOptionalInteger(body.tenantId, 'El inquilino')
-      : current.tenant_id;
+      : (current.tenantId === null ? null : Number(current.tenantId));
     const status = has('status') ? String(body.status) : current.status;
     const amountCents = has('amountCents')
       ? parseOptionalInteger(body.amountCents, 'El importe')
-      : current.amount_cents;
+      : (current.amountCents === null ? null : Number(current.amountCents));
     const period = has('period') ? String(body.period || '').trim() || null : current.period;
-    const dueDate = has('dueDate') ? String(body.dueDate || '') || null : current.due_date;
+    const dueDate = has('dueDate') ? String(body.dueDate || '') || null : current.dueDate;
 
     if (!['invoice', 'contract', 'other'].includes(kind)) throw new HttpError(400, 'Tipo de documento no válido.');
     if (kind === 'invoice' && !['electricity', 'water', 'gas', 'other'].includes(utilityType)) {
@@ -433,37 +434,41 @@ async function handleApi(request, response, requestUrl) {
       throw new HttpError(400, 'Los documentos privados deben asignarse a un inquilino.');
     }
     if (tenantId) {
-      const tenant = database.prepare("SELECT id FROM users WHERE id = ? AND role = 'tenant'").get(tenantId);
+      const tenant = await prisma.user.findFirst({
+        where: { id: BigInt(tenantId), role: 'tenant' },
+        select: { id: true },
+      });
       if (!tenant) throw new HttpError(400, 'El inquilino seleccionado no existe.');
     }
 
-    database.prepare(`
-      UPDATE documents SET
-        kind = ?, utility_type = ?, title = ?, period = ?, amount_cents = ?, due_date = ?,
-        status = ?, visibility = ?, tenant_id = ?
-      WHERE id = ?
-    `).run(
-      kind,
-      kind === 'invoice' ? utilityType : null,
-      title,
-      period,
-      amountCents,
-      dueDate,
-      status,
-      visibility,
-      tenantId,
-      documentId,
-    );
+    await prisma.document.update({
+      where: { id: documentId },
+      data: {
+        kind,
+        utilityType: kind === 'invoice' ? utilityType : null,
+        title,
+        period,
+        amountCents: amountCents === null ? null : BigInt(amountCents),
+        dueDate,
+        status,
+        visibility,
+        tenantId: tenantId === null ? null : BigInt(tenantId),
+      },
+    });
     sendJson(response, 200, { ok: true });
     return;
   }
 
   if (documentMatch && request.method === 'DELETE') {
-    requireAdmin(request);
-    const row = database.prepare('SELECT storage_name FROM documents WHERE id = ?').get(Number(documentMatch[1]));
+    await requireAdmin(request);
+    const documentId = BigInt(documentMatch[1]);
+    const row = await prisma.document.findUnique({
+      where: { id: documentId },
+      select: { storageName: true },
+    });
     if (!row) throw new HttpError(404, 'Documento no encontrado.');
-    database.prepare('DELETE FROM documents WHERE id = ?').run(Number(documentMatch[1]));
-    const filePath = path.join(config.storagePath, row.storage_name);
+    await prisma.document.delete({ where: { id: documentId } });
+    const filePath = path.join(config.storagePath, row.storageName);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     sendJson(response, 200, { ok: true });
     return;

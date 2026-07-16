@@ -3,6 +3,5 @@ data/
 private-storage/
 secrets/*
 !secrets/.gitkeep
-!secrets/admin_password.example
+!secrets/*.example
 .env
-

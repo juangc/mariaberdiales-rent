@@ -26,18 +26,49 @@ function readSecret(filePath, fallback = '') {
     try {
       return fs.readFileSync(filePath, 'utf8').trim();
     } catch {
-      throw new Error(`No se puede leer el secreto indicado en ADMIN_PASSWORD_FILE: ${filePath}`);
+      throw new Error(`No se puede leer el secreto indicado: ${filePath}`);
     }
   }
   return fallback;
 }
 
+function mysqlConfiguration() {
+  if (!process.env.DATABASE_URL) {
+    return {
+      host: process.env.MYSQL_HOST || '127.0.0.1',
+      port: Number(process.env.MYSQL_PORT || 3306),
+      database: process.env.MYSQL_DATABASE || 'maria_berdiales',
+      user: process.env.MYSQL_USER || 'maria_berdiales',
+      password: readSecret(process.env.MYSQL_PASSWORD_FILE, process.env.MYSQL_PASSWORD),
+    };
+  }
+
+  const connection = new URL(process.env.DATABASE_URL);
+  if (!['mysql:', 'mariadb:'].includes(connection.protocol)) {
+    throw new Error('DATABASE_URL debe usar el protocolo mysql:// o mariadb://.');
+  }
+  return {
+    host: connection.hostname,
+    port: Number(connection.port || 3306),
+    database: decodeURIComponent(connection.pathname.replace(/^\//, '')),
+    user: decodeURIComponent(connection.username),
+    password: decodeURIComponent(connection.password),
+  };
+}
+
+const mysql = mysqlConfiguration();
+
 export const config = {
   root,
   port: Number(process.env.PORT || 31234),
-  databasePath: path.resolve(process.env.DB_PATH || path.join(root, 'data/app.sqlite')),
   storagePath: path.resolve(process.env.STORAGE_DIR || path.join(root, 'private-storage')),
   production: process.env.NODE_ENV === 'production',
+  mysqlHost: mysql.host,
+  mysqlPort: mysql.port,
+  mysqlDatabase: mysql.database,
+  mysqlUser: mysql.user,
+  mysqlPassword: mysql.password,
+  mysqlConnectionLimit: Number(process.env.MYSQL_CONNECTION_LIMIT || 10),
   adminEmail: (process.env.ADMIN_EMAIL || '').trim().toLowerCase(),
   adminName: (process.env.ADMIN_NAME || 'Administrador').trim(),
   adminPassword: readSecret(process.env.ADMIN_PASSWORD_FILE, process.env.ADMIN_PASSWORD),
@@ -45,5 +76,4 @@ export const config = {
   maxPdfBytes: Number(process.env.MAX_PDF_BYTES || 12 * 1024 * 1024),
 };
 
-fs.mkdirSync(path.dirname(config.databasePath), { recursive: true });
 fs.mkdirSync(config.storagePath, { recursive: true });

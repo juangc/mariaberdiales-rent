@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>María Berdiales 10 - Segundo B</title>
-<link rel="stylesheet" href="assets/tailwind.css?v=20260713-5">
+<link rel="stylesheet" href="assets/tailwind.css?v=20260715-7">
 <script src="assets/vendor/qrcode.js"></script>
 </head>
 <body>
@@ -14,50 +14,29 @@
 
 <div class="page">
 
-  <!-- ===================== HERO ===================== -->
-  <div class="hero">
-    <svg viewBox="0 0 480 300" width="100%" height="100%" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" class="hero-contours">
-      <path d="M-30,80 Q150,20 240,90 T510,80" fill="none" stroke="currentColor" stroke-width="1"></path>
-      <path d="M-30,125 Q150,65 240,135 T510,125" fill="none" stroke="currentColor" stroke-width="1"></path>
-      <path d="M-30,170 Q150,110 240,180 T510,170" fill="none" stroke="currentColor" stroke-width="1"></path>
-      <path d="M-30,215 Q150,155 240,225 T510,215" fill="none" stroke="currentColor" stroke-width="1"></path>
-      <path d="M-30,260 Q150,200 240,270 T510,260" fill="none" stroke="currentColor" stroke-width="1"></path>
-    </svg>
-    <div class="hero-inner">
-      <div class="hero-topbar">
-        <div class="hero-meta">
-          <span>Guía de la casa</span><span class="hero-coordinates">42.24°N · 8.72°O</span>
-        </div>
-        <a href="/portal" class="hero-private-access">Área privada ↗</a>
-      </div>
-      <div class="hero-grid">
-      <div class="hero-copy">
-      <h1 class="hero-title">María Berdiales 10<br><span class="hero-title-secondary">Segundo B</span></h1>
-      <p class="hero-description">Manual de bienvenida de la casa. Todo lo esencial para vivir bien en el clima atlántico de Vigo — a un escaneo de distancia.</p>
-      </div>
+  <!-- ===================== TOP BAR ===================== -->
+  <header class="topbar">
+    <span class="topbar-label">Guía de la casa</span>
+    <span class="topbar-coordinates">42.24°N · 8.72°O</span>
+    <a href="/portal" class="topbar-private">Área privada ↗</a>
+  </header>
 
-      <!-- SIGNATURE GAUGE -->
-      <div class="hero-gauge">
-        <div class="gauge-header">
-          <span class="gauge-label">Humedad relativa</span>
-          <span class="gauge-value">52% · óptimo</span>
-        </div>
-        <div class="gauge-track">
-          <div class="gauge-low"></div>
-          <div class="gauge-ideal-range"></div>
-          <div class="gauge-high"></div>
-        </div>
-        <div class="gauge-marker-wrap">
-          <div class="gauge-marker"></div>
-          <div class="gauge-dot"></div>
-        </div>
-        <div class="gauge-scale">
-          <span>0</span><span class="gauge-scale-ideal">40 ─ ideal ─ 60</span><span>100</span>
-        </div>
-      </div>
+  <!-- ===================== HERO ===================== -->
+  <section class="hero" aria-labelledby="page-title">
+    <div class="hero-art" aria-hidden="true"><span>MB</span></div>
+    <div class="hero-overlay"></div>
+    <div class="hero-inner">
+      <span class="hero-eyebrow">Manual de bienvenida</span>
+      <h1 id="page-title" class="hero-title">María<br>Berdiales 10</h1>
+      <div class="hero-subtitle">Segundo B</div>
+      <p class="hero-description">Todo lo esencial para vivir bien en el clima atlántico de Vigo — a un escaneo de distancia.</p>
+      <div class="hero-status">
+        <span class="hero-status-dot"></span>
+        <span>Humedad relativa <strong>52%</strong> · óptimo</span>
       </div>
     </div>
-  </div>
+    <span class="hero-scroll">Desliza ↓</span>
+  </section>
 
   <!-- ===================== STICKY QUICKNAV ===================== -->
   <nav class="quicknav">
@@ -141,7 +120,7 @@
           <div class="gauge-dot"></div>
         </div>
         <div class="gauge-scale">
-          <span>seco</span><span class="text-cream">ahora 52%</span><span>húmedo</span>
+          <span>seco</span><span class="gauge-now">ahora 52%</span><span>húmedo</span>
         </div>
       </div>
 
@@ -355,7 +334,7 @@
   </footer>
 
 </div>
-<script src="assets/app.js?v=20260715-1"></script>
+<script src="assets/app.js?v=20260715-2"></script>
 
 
 

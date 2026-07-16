@@ -52,10 +52,21 @@ function enableSectionNavigation() {
 
     const link = links[activeId];
     if (link && rail) {
-      const railLeft = rail.getBoundingClientRect().left;
-      const linkLeft = link.getBoundingClientRect().left;
-      const targetLeft = rail.scrollLeft + linkLeft - railLeft - 16;
-      rail.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+      const railBounds = rail.getBoundingClientRect();
+      const linkBounds = link.getBoundingClientRect();
+      const inset = 20;
+
+      if (linkBounds.left < railBounds.left + inset) {
+        rail.scrollTo({
+          left: Math.max(0, rail.scrollLeft + linkBounds.left - railBounds.left - inset),
+          behavior: 'smooth',
+        });
+      } else if (linkBounds.right > railBounds.right - inset) {
+        rail.scrollTo({
+          left: rail.scrollLeft + linkBounds.right - railBounds.right + inset,
+          behavior: 'smooth',
+        });
+      }
     }
   };
 
@@ -76,8 +87,29 @@ function enableSectionNavigation() {
   activate('wifi');
 }
 
+function enableRevealAnimations() {
+  if (!('IntersectionObserver' in window)) return;
+
+  const elements = document.querySelectorAll('.content-section > *, .footer > *');
+  if (!elements.length) return;
+
+  document.documentElement.classList.add('has-reveal');
+  elements.forEach((element) => element.classList.add('reveal'));
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add('in');
+      observer.unobserve(entry.target);
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+
+  requestAnimationFrame(() => elements.forEach((element) => observer.observe(element)));
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   if (PAGE_CONFIG.theme === 'Claro') document.documentElement.dataset.theme = 'claro';
   renderWifiQrCodes();
   enableSectionNavigation();
+  enableRevealAnimations();
 });
