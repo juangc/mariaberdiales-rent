@@ -128,8 +128,8 @@ a:hover { @apply text-ink; }
 .gauge-ideal-range { @apply w-1/5 bg-gradient-to-r from-accent to-cream; }
 .gauge-high { @apply flex-1; background: repeating-linear-gradient(45deg,var(--color-black),var(--color-black) 4px,var(--color-blue) 4px,var(--color-blue) 8px); }
 .gauge-marker-wrap { @apply relative h-0; }
-.gauge-marker { @apply absolute top-[-19px] left-[52%] h-[23px] w-0.5 -translate-x-1/2 bg-[var(--gauge-marker)]; }
-.gauge-dot { @apply absolute top-[-23px] left-[52%] h-[11px] w-[11px] -translate-x-1/2 rounded-full border-2 border-[var(--gauge-dot-ring)] bg-[var(--gauge-marker)]; }
+.gauge-marker { @apply absolute top-[-19px] left-1/2 h-[23px] w-0.5 -translate-x-1/2 bg-[var(--gauge-marker)]; }
+.gauge-dot { @apply absolute top-[-23px] left-1/2 h-[11px] w-[11px] -translate-x-1/2 rounded-full border-2 border-[var(--gauge-dot-ring)] bg-[var(--gauge-marker)]; }
 .gauge-scale { @apply mt-[11px] flex justify-between font-mono text-[10.5px] text-[var(--gauge-scale)]; }
 .gauge-scale-ideal { @apply text-[var(--gauge-ideal)]; }
 
@@ -379,7 +379,13 @@ body > .page {
   text-transform: uppercase;
 }
 
-.topbar-coordinates { display: none; color: var(--guide-faint); }
+.topbar-coordinates {
+  display: none;
+  color: var(--guide-faint);
+  text-decoration: none;
+  transition: color .25s ease;
+}
+.topbar-coordinates:hover { color: var(--guide-ink); }
 .topbar-private {
   border: 1px solid rgb(46 42 36 / 20%);
   border-radius: 999px;
