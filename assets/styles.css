@@ -1046,6 +1046,10 @@ body > .page {
 .portal-nav-pill {
   min-height: 38px;
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   border: 1px solid rgb(46 42 36 / 16%);
   border-radius: 999px;
   padding: 8px 14px;
@@ -1056,6 +1060,19 @@ body > .page {
   letter-spacing: .04em;
   transition: color .25s ease, border-color .25s ease, background-color .25s ease;
 }
+.portal-nav-badge {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 999px;
+  padding: 0 6px;
+  background: var(--guide-accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
 .portal-nav-pill:hover {
   border-color: var(--guide-ink);
   color: var(--guide-ink);
@@ -1065,6 +1082,10 @@ body > .page {
   border-color: var(--guide-ink);
   background: var(--guide-ink);
   color: var(--guide-paper-light);
+}
+.portal-nav-pill.is-active .portal-nav-badge {
+  background: var(--guide-paper-light);
+  color: var(--guide-ink);
 }
 .portal-dashboard-section {
   min-height: min(620px, calc(100vh - 190px));

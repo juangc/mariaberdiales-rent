@@ -27,7 +27,7 @@ const elements = Object.fromEntries([
   'dashboardView', 'documentCancelButton', 'documentFile', 'documentFileField',
   'documentFilter', 'documentForm', 'documentFormTitle', 'documentKind', 'documentStatusFilter',
   'documentList', 'documentMessage', 'documentSummary', 'documentTenant',
-  'documentsNavButton', 'documentSubmitButton', 'documentUtilityFilter', 'documentUtilityType', 'documentVisibility',
+  'documentsNavButton', 'documentsNavCount', 'documentSubmitButton', 'documentUtilityFilter', 'documentUtilityType', 'documentVisibility',
   'emptyDocuments', 'emptyDocumentsText', 'emptyDocumentsTitle',
   'copyWifiPasswordButton', 'loginForm', 'loginMessage', 'loginView',
   'logoutButton', 'nextPageButton', 'overviewDocumentsButton', 'overviewNavButton', 'pagination', 'paginationInfo',
@@ -211,6 +211,11 @@ function showAdminSection(requestedSection) {
 }
 
 function renderSummary() {
+  elements.documentsNavCount.textContent = state.summary.documentCount;
+  elements.documentsNavCount.setAttribute(
+    'aria-label',
+    state.summary.documentCount === 1 ? '1 documento disponible' : `${state.summary.documentCount} documentos disponibles`,
+  );
   elements.documentSummary.replaceChildren();
   const values = [
     ['Documentos', String(state.summary.documentCount)],
