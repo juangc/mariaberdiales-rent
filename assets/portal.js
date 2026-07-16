@@ -1,5 +1,6 @@
 const state = {
   user: null,
+  wifi: null,
   users: [],
   documents: [],
   filters: {
@@ -18,11 +19,14 @@ const elements = Object.fromEntries([
   'documentList', 'documentMessage', 'documentSummary', 'documentTenant',
   'documentSubmitButton', 'documentUtilityFilter', 'documentUtilityType', 'documentVisibility',
   'emptyDocuments', 'emptyDocumentsText', 'emptyDocumentsTitle',
-  'loginForm', 'loginMessage', 'loginView',
+  'copyWifiPasswordButton', 'loginForm', 'loginMessage', 'loginView',
   'logoutButton', 'nextPageButton', 'pagination', 'paginationInfo', 'previousPageButton',
-  'tenantField', 'userForm', 'userList', 'userMessage', 'welcomeTitle',
-  'utilityTypeField',
+  'residentWifiQr', 'showWifiPasswordButton', 'tenantField', 'userForm', 'userList',
+  'userMessage', 'utilityTypeField', 'welcomeTitle', 'wifi', 'wifiMessage', 'wifiPassword',
+  'wifiRecommendedSsid', 'wifiSecondarySsid',
 ].map((id) => [id, document.getElementById(id)]));
+
+const WIFI_PASSWORD_MASK = '••••••••••••';
 
 async function api(url, options = {}) {
   const response = await fetch(url, {
@@ -79,6 +83,70 @@ function textElement(tag, className, text) {
   element.className = className;
   element.textContent = text;
   return element;
+}
+
+function wifiQrPayload(wifi) {
+  const escapeValue = (value) => String(value).replace(/([\\;,:"])/g, '\\$1');
+  return `WIFI:T:WPA;S:${escapeValue(wifi.recommendedSsid)};P:${escapeValue(wifi.password)};;`;
+}
+
+function renderWifiQr(wifi) {
+  elements.residentWifiQr.replaceChildren();
+  if (typeof window.qrcode !== 'function') {
+    elements.residentWifiQr.textContent = 'QR no disponible';
+    return;
+  }
+  const qr = window.qrcode(0, 'M');
+  qr.addData(wifiQrPayload(wifi));
+  qr.make();
+  elements.residentWifiQr.innerHTML = qr.createSvgTag({ cellSize: 5, margin: 0, scalable: true });
+  const svg = elements.residentWifiQr.querySelector('svg');
+  if (svg) {
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.style.display = 'block';
+  }
+}
+
+function renderWifi(wifi) {
+  state.wifi = wifi;
+  elements.wifiRecommendedSsid.textContent = wifi.recommendedSsid;
+  elements.wifiSecondarySsid.textContent = `Red alternativa · 2,4 GHz: ${wifi.secondarySsid}`;
+  elements.wifiPassword.textContent = WIFI_PASSWORD_MASK;
+  elements.showWifiPasswordButton.disabled = false;
+  elements.copyWifiPasswordButton.disabled = false;
+  elements.showWifiPasswordButton.textContent = 'Mostrar contraseña';
+  elements.showWifiPasswordButton.setAttribute('aria-pressed', 'false');
+  renderWifiQr(wifi);
+}
+
+async function loadWifi() {
+  try {
+    const payload = await api('/api/wifi');
+    renderWifi(payload.wifi);
+    setMessage(elements.wifiMessage, '');
+  } catch (error) {
+    state.wifi = null;
+    elements.wifiRecommendedSsid.textContent = 'No disponible';
+    elements.wifiSecondarySsid.textContent = '';
+    elements.residentWifiQr.textContent = 'QR no disponible';
+    elements.showWifiPasswordButton.disabled = true;
+    elements.copyWifiPasswordButton.disabled = true;
+    setMessage(elements.wifiMessage, error.message, true);
+  }
+}
+
+function fallbackCopy(value) {
+  const input = document.createElement('textarea');
+  input.value = value;
+  input.setAttribute('readonly', '');
+  input.style.position = 'fixed';
+  input.style.opacity = '0';
+  document.body.append(input);
+  input.select();
+  const copied = document.execCommand('copy');
+  input.remove();
+  if (!copied) throw new Error('No se ha podido copiar la contraseña.');
 }
 
 function renderSummary() {
@@ -314,9 +382,32 @@ async function showDashboard(user) {
   elements.logoutButton.classList.remove('hidden');
   elements.adminView.classList.toggle('hidden', user.role !== 'admin');
   elements.welcomeTitle.textContent = user.role === 'admin' ? 'Documentación del piso' : `Hola, ${user.name}`;
-  await loadDocuments();
+  await Promise.all([loadDocuments(), loadWifi()]);
   if (user.role === 'admin') await loadUsers();
+  if (window.location.hash === '#wifi') {
+    requestAnimationFrame(() => elements.wifi.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
 }
+
+elements.showWifiPasswordButton.addEventListener('click', () => {
+  if (!state.wifi) return;
+  const showing = elements.showWifiPasswordButton.getAttribute('aria-pressed') === 'true';
+  elements.wifiPassword.textContent = showing ? WIFI_PASSWORD_MASK : state.wifi.password;
+  elements.showWifiPasswordButton.textContent = showing ? 'Mostrar contraseña' : 'Ocultar contraseña';
+  elements.showWifiPasswordButton.setAttribute('aria-pressed', String(!showing));
+  setMessage(elements.wifiMessage, '');
+});
+
+elements.copyWifiPasswordButton.addEventListener('click', async () => {
+  if (!state.wifi) return;
+  try {
+    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(state.wifi.password);
+    else fallbackCopy(state.wifi.password);
+    setMessage(elements.wifiMessage, 'Contraseña copiada.');
+  } catch (error) {
+    setMessage(elements.wifiMessage, error.message || 'No se ha podido copiar la contraseña.', true);
+  }
+});
 
 elements.loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();

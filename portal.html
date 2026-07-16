@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>Área privada · María Berdiales 10</title>
-  <link rel="stylesheet" href="assets/tailwind.css?v=20260715-7">
-  <script src="assets/portal.js?v=20260713-4" defer></script>
+  <link rel="stylesheet" href="assets/tailwind.css?v=20260717-4">
+  <script src="assets/vendor/qrcode.js" defer></script>
+  <script src="assets/portal.js?v=20260717-1" defer></script>
 </head>
 <body class="portal-body">
   <header class="portal-header">
@@ -50,6 +51,46 @@
         </div>
         <div id="documentSummary" class="summary-grid"></div>
       </div>
+
+      <section id="wifi" class="resident-wifi-section" aria-labelledby="residentWifiTitle">
+        <div class="resident-wifi-heading">
+          <div>
+            <p class="portal-eyebrow">Conexión del piso</p>
+            <h2 id="residentWifiTitle" class="portal-section-title">WiFi para residentes</h2>
+          </div>
+          <span class="resident-wifi-private">Acceso privado</span>
+        </div>
+        <div class="portal-panel resident-wifi-card">
+          <div class="resident-wifi-details">
+            <div class="resident-network-block">
+              <span class="resident-wifi-label">Red recomendada · 5 GHz</span>
+              <strong id="wifiRecommendedSsid" class="resident-network-name">Cargando…</strong>
+              <span id="wifiSecondarySsid" class="resident-secondary-network"></span>
+            </div>
+            <div class="resident-password-block">
+              <span class="resident-wifi-label">Contraseña</span>
+              <code id="wifiPassword" class="resident-password" aria-live="polite">••••••••••••</code>
+              <div class="resident-password-actions">
+                <button id="showWifiPasswordButton" class="portal-quiet-button" type="button" aria-pressed="false" disabled>Mostrar contraseña</button>
+                <button id="copyWifiPasswordButton" class="portal-secondary-button" type="button" disabled>Copiar contraseña</button>
+              </div>
+              <p id="wifiMessage" class="form-message" role="status"></p>
+            </div>
+            <div class="resident-wifi-instructions">
+              <h3>Conexión manual</h3>
+              <ol>
+                <li>Abre los ajustes WiFi de tu dispositivo.</li>
+                <li>Selecciona la red recomendada e introduce la contraseña.</li>
+                <li>Si estás lejos del router, utiliza la red de 2,4 GHz.</li>
+              </ol>
+            </div>
+          </div>
+          <div class="resident-qr-panel">
+            <div id="residentWifiQr" class="resident-wifi-qr" aria-label="Código QR para conectarse a la red WiFi"></div>
+            <p>Escanea el código con la cámara del móvil para conectarte automáticamente.</p>
+          </div>
+        </div>
+      </section>
 
       <div class="document-toolbar">
         <h2 class="portal-section-title">Documentos disponibles</h2>

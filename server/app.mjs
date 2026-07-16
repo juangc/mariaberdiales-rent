@@ -245,6 +245,20 @@ async function handleApi(request, response, requestUrl) {
     return;
   }
 
+  if (pathname === '/api/wifi' && request.method === 'GET') {
+    await requireUser(request);
+    if (!config.wifiPassword) throw new HttpError(503, 'La conexión WiFi todavía no está configurada.');
+    sendJson(response, 200, {
+      wifi: {
+        recommendedSsid: config.wifiRecommendedSsid,
+        secondarySsid: config.wifiSecondarySsid,
+        password: config.wifiPassword,
+        security: 'WPA2-PSK',
+      },
+    });
+    return;
+  }
+
   if (pathname === '/api/documents' && request.method === 'GET') {
     const user = await requireUser(request);
     sendJson(response, 200, await documentPage(user, searchParams));

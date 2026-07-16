@@ -15,6 +15,8 @@ Prisma ORM y MySQL.
   combinables.
 - Panel de administración para crear usuarios y publicar, editar o eliminar documentos.
 - PDF almacenados fuera del directorio público y de Git.
+- Credenciales WiFi disponibles únicamente tras iniciar sesión, con contraseña
+  enmascarada, copia directa y QR generado después de la autenticación.
 
 ## Desarrollo local
 
@@ -27,7 +29,7 @@ npm run dev
 ```
 
 Antes de iniciar, edita `.env`, completa las variables `MYSQL_*`,
-`ADMIN_EMAIL` y `ADMIN_PASSWORD`, y crea la base y el usuario MySQL indicados.
+`ADMIN_EMAIL`, `ADMIN_PASSWORD` y `WIFI_PASSWORD`, y crea la base y el usuario MySQL indicados.
 La contraseña del administrador debe ser una frase de paso de al menos 15
 caracteres. Aplica primero el esquema con `npm run db:deploy`; el servidor carga
 `.env` y sus valores no se incluyen en Git.
@@ -49,13 +51,14 @@ El despliegue incluye la aplicación y Caddy como proxy HTTPS. Antes de iniciarl
 cp .env.example .env
 mkdir -p secrets
 cp secrets/admin_password.example secrets/admin_password.txt
+cp secrets/wifi_password.example secrets/wifi_password.txt
 cp secrets/mysql_password.example secrets/mysql_password.txt
 cp secrets/mysql_root_password.example secrets/mysql_root_password.txt
 chmod 600 .env secrets/*.txt
 ```
 
 Edita `.env` con el dominio y correo reales. Sustituye el contenido de
-los tres archivos de `secrets/` por contraseñas únicas. La contraseña del
+los cuatro archivos de `secrets/` por contraseñas únicas. La contraseña del
 administrador debe tener al menos 15 caracteres. Después ejecuta:
 
 ```sh
@@ -93,6 +96,9 @@ En Plesk deben estar instaladas las extensiones **Git** y **Node.js Toolkit**.
    ADMIN_EMAIL=propietario@example.com
    ADMIN_NAME=Administrador
    ADMIN_PASSWORD=una-frase-de-paso-unica-de-al-menos-15-caracteres
+   WIFI_RECOMMENDED_SSID=MOVISTAR_PLUS_3050
+   WIFI_SECONDARY_SSID=MOVISTAR_3050
+   WIFI_PASSWORD=clave-real-de-la-red-wifi
    MYSQL_HOST=localhost
    MYSQL_PORT=3306
    MYSQL_DATABASE=nombre_de_la_base_en_plesk
@@ -167,13 +173,15 @@ npm run build
 ```
 
 El resultado se escribe en `dist/index.html`. Este fichero conserva la guía
-autocontenida, pero no contiene el portal, la base de datos ni ningún documento
-privado.
+autocontenida, pero no contiene el portal, la base de datos, ningún documento
+privado ni las credenciales o el QR de la red WiFi.
 
 ## Estructura de datos
 
 - MySQL gestionado mediante `prisma/schema.prisma`: usuarios, sesiones y metadatos.
 - `private-storage/`: PDF con nombres internos aleatorios; no versionado.
+- La clave WiFi se recibe desde `WIFI_PASSWORD` o `WIFI_PASSWORD_FILE` y solo
+  se entrega mediante `/api/wifi` a usuarios con una sesión válida.
 - Las contraseñas se almacenan mediante `scrypt` con una sal aleatoria.
 - Las sesiones utilizan cookies `HttpOnly`, `Secure` y `SameSite=Strict` en
   producción.

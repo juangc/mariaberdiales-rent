@@ -4,8 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>María Berdiales 10 - Segundo B</title>
-<link rel="stylesheet" href="assets/tailwind.css?v=20260717-1">
-<script src="assets/vendor/qrcode.js"></script>
+<link rel="stylesheet" href="assets/tailwind.css?v=20260717-4">
 </head>
 <body>
 
@@ -117,34 +116,12 @@
         <span class="section-number">01</span>
         <h2 class="section-title">WiFi</h2>
       </div>
-      <div class="stack">
-
-        <div class="wifi-card">
-          <div id="wifiQR1" class="wifi-qr"></div>
-          <div class="wifi-copy">
-            <div class="wifi-band">2,4 GHz</div>
-            <div class="wifi-label">Red</div>
-            <div class="wifi-network">MOVISTAR_3050</div>
-            <div class="wifi-label !mt-0">Clave · WPA2-PSK</div>
-            <div class="wifi-password">P3zMmbSWLbqmJpacqyaz</div>
-          </div>
-        </div>
-
-        <div class="wifi-card">
-          <div id="wifiQR2" class="wifi-qr"></div>
-          <div class="wifi-copy">
-            <div class="wifi-band wifi-band-plus">5 GHz · Plus</div>
-            <div class="wifi-label">Red</div>
-            <div class="wifi-network">MOVISTAR_PLUS_3050</div>
-            <div class="wifi-label !mt-0">Clave · WPA2-PSK</div>
-            <div class="wifi-password">P3zMmbSWLbqmJpacqyaz</div>
-          </div>
-        </div>
-
-      </div>
-      <div class="card card-after">
-        <p class="body-copy">Escanead el QR con la cámara del móvil para conectaros automáticamente, sin teclear la contraseña. La red <strong>Plus (5 GHz)</strong> es más rápida a poca distancia del router; la de <strong>2,4 GHz</strong> llega mejor a las habitaciones más alejadas.</p>
-        <p class="body-copy">Si tenéis cualquier problema con la conexión, avisadnos por WhatsApp - más abajo tenéis el contacto directo.</p>
+      <div class="public-wifi-card">
+        <span class="public-wifi-label">Red recomendada · 5 GHz</span>
+        <strong class="public-wifi-network">MOVISTAR_PLUS_3050</strong>
+        <p class="public-wifi-copy">La red de <strong>5 GHz</strong> ofrece más velocidad cerca del router. La red de <strong>2,4 GHz</strong> tiene mayor alcance y funciona mejor en las habitaciones más alejadas.</p>
+        <p class="public-wifi-private-note"><span class="public-wifi-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg></span> Por seguridad, la contraseña y el código QR solo están disponibles para residentes identificados.</p>
+        <a href="/portal#wifi" class="public-resident-button">Acceder al área de residentes <span aria-hidden="true">↗</span></a>
       </div>
     </section>
 
@@ -382,7 +359,7 @@
   </footer>
 
 </div>
-<script src="assets/app.js?v=20260717-1"></script>
+<script src="assets/app.js?v=20260717-2"></script>
 
 
 

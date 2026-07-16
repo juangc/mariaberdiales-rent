@@ -72,6 +72,9 @@ export const config = {
   adminEmail: (process.env.ADMIN_EMAIL || '').trim().toLowerCase(),
   adminName: (process.env.ADMIN_NAME || 'Administrador').trim(),
   adminPassword: readSecret(process.env.ADMIN_PASSWORD_FILE, process.env.ADMIN_PASSWORD),
+  wifiRecommendedSsid: (process.env.WIFI_RECOMMENDED_SSID || 'MOVISTAR_PLUS_3050').trim(),
+  wifiSecondarySsid: (process.env.WIFI_SECONDARY_SSID || 'MOVISTAR_3050').trim(),
+  wifiPassword: readSecret(process.env.WIFI_PASSWORD_FILE, process.env.WIFI_PASSWORD),
   sessionDays: Number(process.env.SESSION_DAYS || 7),
   maxPdfBytes: Number(process.env.MAX_PDF_BYTES || 12 * 1024 * 1024),
 };

@@ -13,7 +13,9 @@ export function sendJson(response, status, payload) {
   response.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(body),
-    'Cache-Control': 'no-store',
+    'Cache-Control': 'private, no-store, no-cache, must-revalidate',
+    'CDN-Cache-Control': 'no-store',
+    'Pragma': 'no-cache',
   });
   response.end(body);
 }

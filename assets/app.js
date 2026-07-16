@@ -1,34 +1,7 @@
 // Ajustes sencillos de la pagina. El HTML contiene los valores iniciales.
 const PAGE_CONFIG = {
   theme: 'Lumia',
-  wifiNetworks: [
-    { elementId: 'wifiQR1', ssid: 'MOVISTAR_3050', password: 'P3zMmbSWLbqmJpacqyaz' },
-    { elementId: 'wifiQR2', ssid: 'MOVISTAR_PLUS_3050', password: 'P3zMmbSWLbqmJpacqyaz' },
-  ],
 };
-
-function renderWifiQrCodes() {
-  if (typeof window.qrcode !== 'function') return;
-  const escapeWifiValue = (value) => String(value).replace(/([\\;,:"])/g, '\\$1');
-
-  PAGE_CONFIG.wifiNetworks.forEach(({ elementId, ssid, password }) => {
-    const element = document.getElementById(elementId);
-    if (!element) return;
-
-    const payload = `WIFI:T:WPA;S:${escapeWifiValue(ssid)};P:${escapeWifiValue(password)};;`;
-    const qr = window.qrcode(0, 'M');
-    qr.addData(payload);
-    qr.make();
-    element.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
-
-    const svg = element.querySelector('svg');
-    if (svg) {
-      svg.style.width = '100%';
-      svg.style.height = '100%';
-      svg.style.display = 'block';
-    }
-  });
-}
 
 function enableSectionNavigation() {
   const sectionIds = [
@@ -109,7 +82,6 @@ function enableRevealAnimations() {
 
 document.addEventListener('DOMContentLoaded', () => {
   if (PAGE_CONFIG.theme === 'Claro') document.documentElement.dataset.theme = 'claro';
-  renderWifiQrCodes();
   enableSectionNavigation();
   enableRevealAnimations();
 });
