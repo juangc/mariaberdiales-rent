@@ -121,7 +121,7 @@ async function documentPage(user, searchParams) {
   const total = await prisma.document.count({ where: filterWhere });
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const page = Math.min(requestedPage, totalPages);
-  const [rows, documentCount, pendingInvoices] = await Promise.all([
+  const [rows, documentCount, pendingInvoices, attentionRows] = await Promise.all([
     prisma.document.findMany({
       where: filterWhere,
       include: { tenant: { select: { name: true } } },
@@ -141,10 +141,23 @@ async function documentPage(user, searchParams) {
       _count: { _all: true },
       _sum: { amountCents: true },
     }),
+    prisma.document.findMany({
+      where: {
+        AND: [
+          ...accessConditions,
+          { kind: 'invoice' },
+          { status: { in: ['pending', 'overdue'] } },
+        ],
+      },
+      include: { tenant: { select: { name: true } } },
+      orderBy: [{ status: 'asc' }, { dueDate: 'asc' }, { createdAt: 'desc' }],
+      take: 6,
+    }),
   ]);
 
   return {
     documents: rows.map(publicDocument),
+    attentionDocuments: attentionRows.map(publicDocument),
     pagination: { page, pageSize, total, totalPages },
     summary: {
       documentCount,

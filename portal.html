@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>Área privada · María Berdiales 10</title>
-  <link rel="stylesheet" href="assets/tailwind.css?v=20260717-4">
+  <link rel="stylesheet" href="assets/tailwind.css?v=20260717-7">
   <script src="assets/vendor/qrcode.js" defer></script>
-  <script src="assets/portal.js?v=20260717-1" defer></script>
+  <script src="assets/portal.js?v=20260717-4" defer></script>
 </head>
 <body class="portal-body">
   <header class="portal-header">
@@ -44,15 +44,43 @@
     </section>
 
     <section id="dashboardView" class="hidden">
-      <div class="dashboard-intro">
-        <div>
-          <p class="portal-eyebrow">Documentos y suministros</p>
-          <h1 id="welcomeTitle" class="portal-page-title">Tu documentación</h1>
-        </div>
-        <div id="documentSummary" class="summary-grid"></div>
-      </div>
+      <nav id="portalSectionNav" class="portal-section-nav noscroll" aria-label="Secciones del área privada">
+        <button id="overviewNavButton" class="portal-nav-pill is-active" type="button" data-portal-section="overview" aria-pressed="true">Inicio</button>
+        <button id="wifiNavButton" class="portal-nav-pill" type="button" data-portal-section="wifi" aria-pressed="false">WiFi</button>
+        <button id="documentsNavButton" class="portal-nav-pill" type="button" data-portal-section="documents" aria-pressed="false">Documentos</button>
+        <button id="adminNavButton" class="portal-nav-pill hidden" type="button" data-portal-section="admin" aria-pressed="false">Administración</button>
+      </nav>
 
-      <section id="wifi" class="resident-wifi-section" aria-labelledby="residentWifiTitle">
+      <section id="portalOverviewSection" class="portal-dashboard-section" aria-labelledby="welcomeTitle">
+        <div class="dashboard-intro">
+          <div>
+            <p class="portal-eyebrow">Resumen del área privada</p>
+            <h1 id="welcomeTitle" class="portal-page-title">Tu espacio de residente</h1>
+            <p class="portal-lead portal-dashboard-lead">Accede a la conexión WiFi y consulta la documentación compartida del piso.</p>
+          </div>
+          <div id="documentSummary" class="summary-grid"></div>
+        </div>
+        <section class="overview-attention" aria-labelledby="attentionDocumentsTitle">
+          <div class="overview-attention-heading">
+            <div>
+              <p class="portal-eyebrow">Seguimiento</p>
+              <h2 id="attentionDocumentsTitle" class="portal-section-title">Requieren atención</h2>
+            </div>
+            <span id="attentionDocumentCount" class="overview-attention-count"></span>
+          </div>
+          <div id="attentionDocumentList" class="overview-document-list"></div>
+          <div id="attentionEmpty" class="overview-attention-empty hidden">
+            <span class="overview-empty-mark" aria-hidden="true">
+              <svg class="overview-empty-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 12 4 4 8-9"></path></svg>
+              <svg class="overview-empty-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5"></path><path d="M12 17h.01"></path></svg>
+            </span>
+            <div><strong id="attentionEmptyTitle">Todo al día</strong><span id="attentionEmptyText">No hay facturas vencidas ni pendientes.</span></div>
+          </div>
+          <button id="overviewDocumentsButton" class="overview-documents-button" type="button">Ver todos los documentos <span aria-hidden="true">→</span></button>
+        </section>
+      </section>
+
+      <section id="wifi" class="portal-dashboard-section resident-wifi-section hidden" aria-labelledby="residentWifiTitle">
         <div class="resident-wifi-heading">
           <div>
             <p class="portal-eyebrow">Conexión del piso</p>
@@ -92,43 +120,48 @@
         </div>
       </section>
 
-      <div class="document-toolbar">
-        <h2 class="portal-section-title">Documentos disponibles</h2>
-        <div class="document-filters">
-          <select id="documentFilter" class="field-input filter-select" aria-label="Filtrar por tipo de documento">
-            <option value="all">Todos los documentos</option>
-            <option value="invoice">Facturas</option>
-            <option value="contract">Contratos</option>
-            <option value="other">Otros</option>
-          </select>
-          <select id="documentStatusFilter" class="field-input filter-select" aria-label="Filtrar por estado">
-            <option value="all">Todos los estados</option>
-            <option value="information">Informativos</option>
-            <option value="pending">Pendientes</option>
-            <option value="paid">Pagadas</option>
-            <option value="overdue">Vencidas</option>
-          </select>
-          <select id="documentUtilityFilter" class="field-input filter-select" aria-label="Filtrar por tipo de factura">
-            <option value="all">Todos los suministros</option>
-            <option value="electricity">Luz</option>
-            <option value="water">Agua</option>
-            <option value="gas">Gas</option>
-            <option value="other">Otros</option>
-          </select>
+      <section id="portalDocumentsSection" class="portal-dashboard-section portal-documents-section hidden" aria-labelledby="documentsSectionTitle">
+        <div class="document-toolbar">
+          <div>
+            <p class="portal-eyebrow">Archivo del residente</p>
+            <h2 id="documentsSectionTitle" class="portal-section-title">Documentos disponibles</h2>
+          </div>
+          <div class="document-filters">
+            <select id="documentFilter" class="field-input filter-select" aria-label="Filtrar por tipo de documento">
+              <option value="all">Todos los documentos</option>
+              <option value="invoice">Facturas</option>
+              <option value="contract">Contratos</option>
+              <option value="other">Otros</option>
+            </select>
+            <select id="documentStatusFilter" class="field-input filter-select" aria-label="Filtrar por estado">
+              <option value="all">Todos los estados</option>
+              <option value="information">Informativos</option>
+              <option value="pending">Pendientes</option>
+              <option value="paid">Pagadas</option>
+              <option value="overdue">Vencidas</option>
+            </select>
+            <select id="documentUtilityFilter" class="field-input filter-select" aria-label="Filtrar por tipo de factura">
+              <option value="all">Todos los suministros</option>
+              <option value="electricity">Luz</option>
+              <option value="water">Agua</option>
+              <option value="gas">Gas</option>
+              <option value="other">Otros</option>
+            </select>
+          </div>
         </div>
-      </div>
-      <div id="documentList" class="document-list"></div>
-      <div id="emptyDocuments" class="portal-empty hidden">
-        <p id="emptyDocumentsTitle" class="portal-card-title">Todavía no hay documentos</p>
-        <p id="emptyDocumentsText">Cuando se publique una factura o un contrato aparecerá aquí.</p>
-      </div>
-      <nav id="pagination" class="document-pagination hidden" aria-label="Paginación de documentos">
-        <button id="previousPageButton" class="pagination-button" type="button">Anterior</button>
-        <span id="paginationInfo" class="pagination-info" aria-live="polite"></span>
-        <button id="nextPageButton" class="pagination-button" type="button">Siguiente</button>
-      </nav>
+        <div id="documentList" class="document-list"></div>
+        <div id="emptyDocuments" class="portal-empty hidden">
+          <p id="emptyDocumentsTitle" class="portal-card-title">Todavía no hay documentos</p>
+          <p id="emptyDocumentsText">Cuando se publique una factura o un contrato aparecerá aquí.</p>
+        </div>
+        <nav id="pagination" class="document-pagination hidden" aria-label="Paginación de documentos">
+          <button id="previousPageButton" class="pagination-button" type="button">Anterior</button>
+          <span id="paginationInfo" class="pagination-info" aria-live="polite"></span>
+          <button id="nextPageButton" class="pagination-button" type="button">Siguiente</button>
+        </nav>
+      </section>
 
-      <section id="adminView" class="admin-section hidden">
+      <section id="adminView" class="portal-dashboard-section admin-section hidden">
         <div class="admin-heading">
           <div>
             <p class="portal-eyebrow">Administración</p>

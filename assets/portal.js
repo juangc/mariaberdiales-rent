@@ -1,8 +1,11 @@
 const state = {
   user: null,
   wifi: null,
+  wifiLoaded: false,
+  activeSection: 'overview',
   users: [],
   documents: [],
+  attentionDocuments: [],
   filters: {
     kind: 'all',
     status: 'all',
@@ -14,19 +17,28 @@ const state = {
 };
 
 const elements = Object.fromEntries([
-  'adminView', 'dashboardView', 'documentCancelButton', 'documentFile', 'documentFileField',
+  'adminNavButton', 'adminView', 'attentionDocumentCount', 'attentionDocumentList', 'attentionEmpty',
+  'attentionEmptyText', 'attentionEmptyTitle',
+  'dashboardView', 'documentCancelButton', 'documentFile', 'documentFileField',
   'documentFilter', 'documentForm', 'documentFormTitle', 'documentKind', 'documentStatusFilter',
   'documentList', 'documentMessage', 'documentSummary', 'documentTenant',
-  'documentSubmitButton', 'documentUtilityFilter', 'documentUtilityType', 'documentVisibility',
+  'documentsNavButton', 'documentSubmitButton', 'documentUtilityFilter', 'documentUtilityType', 'documentVisibility',
   'emptyDocuments', 'emptyDocumentsText', 'emptyDocumentsTitle',
   'copyWifiPasswordButton', 'loginForm', 'loginMessage', 'loginView',
-  'logoutButton', 'nextPageButton', 'pagination', 'paginationInfo', 'previousPageButton',
+  'logoutButton', 'nextPageButton', 'overviewDocumentsButton', 'overviewNavButton', 'pagination', 'paginationInfo',
+  'portalDocumentsSection', 'portalOverviewSection', 'portalSectionNav', 'previousPageButton',
   'residentWifiQr', 'showWifiPasswordButton', 'tenantField', 'userForm', 'userList',
   'userMessage', 'utilityTypeField', 'welcomeTitle', 'wifi', 'wifiMessage', 'wifiPassword',
-  'wifiRecommendedSsid', 'wifiSecondarySsid',
+  'wifiNavButton', 'wifiRecommendedSsid', 'wifiSecondarySsid',
 ].map((id) => [id, document.getElementById(id)]));
 
 const WIFI_PASSWORD_MASK = '••••••••••••';
+const portalSections = {
+  overview: { panel: elements.portalOverviewSection, button: elements.overviewNavButton, hash: '#inicio' },
+  wifi: { panel: elements.wifi, button: elements.wifiNavButton, hash: '#wifi' },
+  documents: { panel: elements.portalDocumentsSection, button: elements.documentsNavButton, hash: '#documentos' },
+  admin: { panel: elements.adminView, button: elements.adminNavButton, hash: '#administracion' },
+};
 
 async function api(url, options = {}) {
   const response = await fetch(url, {
@@ -124,9 +136,11 @@ async function loadWifi() {
   try {
     const payload = await api('/api/wifi');
     renderWifi(payload.wifi);
+    state.wifiLoaded = true;
     setMessage(elements.wifiMessage, '');
   } catch (error) {
     state.wifi = null;
+    state.wifiLoaded = false;
     elements.wifiRecommendedSsid.textContent = 'No disponible';
     elements.wifiSecondarySsid.textContent = '';
     elements.residentWifiQr.textContent = 'QR no disponible';
@@ -149,12 +163,38 @@ function fallbackCopy(value) {
   if (!copied) throw new Error('No se ha podido copiar la contraseña.');
 }
 
+function sectionFromHash() {
+  const match = Object.entries(portalSections).find(([, section]) => section.hash === window.location.hash);
+  return match?.[0] || 'overview';
+}
+
+async function showPortalSection(requestedSection, updateLocation = true) {
+  const sectionName = portalSections[requestedSection]
+    && (requestedSection !== 'admin' || state.user?.role === 'admin')
+    ? requestedSection
+    : 'overview';
+
+  state.activeSection = sectionName;
+  Object.entries(portalSections).forEach(([name, section]) => {
+    const active = name === sectionName;
+    section.panel.classList.toggle('hidden', !active);
+    section.button.classList.toggle('is-active', active);
+    section.button.setAttribute('aria-pressed', String(active));
+  });
+
+  if (sectionName === 'wifi' && !state.wifiLoaded) await loadWifi();
+  if (updateLocation) {
+    window.history.replaceState(null, '', portalSections[sectionName].hash);
+    elements.portalSectionNav.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
 function renderSummary() {
   elements.documentSummary.replaceChildren();
   const values = [
     ['Documentos', String(state.summary.documentCount)],
-    ['Facturas pendientes', String(state.summary.pendingInvoiceCount)],
-    ['Importe pendiente', formatMoney(state.summary.pendingAmountCents)],
+    ['Por revisar', String(state.summary.pendingInvoiceCount)],
+    ['Importe por revisar', formatMoney(state.summary.pendingAmountCents)],
   ];
   values.forEach(([label, value]) => {
     const card = document.createElement('div');
@@ -162,6 +202,47 @@ function renderSummary() {
     card.append(textElement('span', 'summary-label', label), textElement('strong', 'summary-value', value));
     elements.documentSummary.append(card);
   });
+}
+
+function attentionDocumentRow(documentItem) {
+  const row = document.createElement('article');
+  row.className = 'overview-document-row';
+
+  const status = textElement(
+    'span',
+    `overview-document-status status-${documentItem.status}`,
+    statusLabels[documentItem.status],
+  );
+  const copy = document.createElement('div');
+  copy.className = 'overview-document-copy';
+  const title = textElement('a', 'overview-document-title', documentItem.title);
+  title.href = documentItem.fileUrl;
+  title.target = '_blank';
+  title.rel = 'noopener';
+  const dateLabel = documentItem.dueDate
+    ? `${documentItem.status === 'overdue' ? 'Venció' : 'Vence'} ${formatDate(documentItem.dueDate)}`
+    : 'Sin fecha de vencimiento';
+  copy.append(title, textElement('span', 'overview-document-meta', [documentItem.period, dateLabel].filter(Boolean).join(' · ')));
+
+  const amount = textElement('strong', 'overview-document-amount', formatMoney(documentItem.amountCents) || '—');
+  row.append(status, copy, amount);
+  return row;
+}
+
+function renderAttentionDocuments() {
+  const total = state.summary.pendingInvoiceCount;
+  const hasRows = state.attentionDocuments.length > 0;
+  const missingDetail = total > 0 && !hasRows;
+  elements.attentionDocumentCount.textContent = total === 1 ? '1 documento' : `${total} documentos`;
+  elements.attentionDocumentList.replaceChildren();
+  state.attentionDocuments.forEach((item) => elements.attentionDocumentList.append(attentionDocumentRow(item)));
+  elements.attentionDocumentList.classList.toggle('hidden', !hasRows);
+  elements.attentionEmpty.classList.toggle('hidden', hasRows);
+  elements.attentionEmpty.classList.toggle('is-warning', missingDetail);
+  elements.attentionEmptyTitle.textContent = missingDetail ? 'Hay documentos por revisar' : 'Todo al día';
+  elements.attentionEmptyText.textContent = missingDetail
+    ? 'Abre Documentos para consultar las facturas pendientes o vencidas.'
+    : 'No hay facturas vencidas ni pendientes.';
 }
 
 function renderPagination() {
@@ -257,6 +338,7 @@ function renderDocuments() {
     ? 'No hay documentos que coincidan con los filtros seleccionados.'
     : 'Cuando se publique una factura o un contrato aparecerá aquí.';
   renderSummary();
+  renderAttentionDocuments();
   renderPagination();
 }
 
@@ -341,7 +423,9 @@ function startDocumentEdit(documentItem) {
   updateTenantField();
   updateUtilityTypeField();
   setMessage(elements.documentMessage, `Editando “${documentItem.title}”.`);
-  elements.documentForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showPortalSection('admin').then(() => {
+    elements.documentForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 }
 
 async function loadDocuments() {
@@ -351,6 +435,15 @@ async function loadDocuments() {
   });
   const payload = await api(`/api/documents?${params}`);
   state.documents = payload.documents;
+  state.attentionDocuments = Array.isArray(payload.attentionDocuments)
+    ? payload.attentionDocuments
+    : payload.documents
+      .filter((item) => item.kind === 'invoice' && ['pending', 'overdue'].includes(item.status))
+      .sort((left, right) => {
+        if (left.status !== right.status) return left.status === 'overdue' ? -1 : 1;
+        return String(left.dueDate || '').localeCompare(String(right.dueDate || ''));
+      })
+      .slice(0, 6);
   state.pagination = payload.pagination;
   state.summary = payload.summary;
   renderDocuments();
@@ -380,14 +473,24 @@ async function showDashboard(user) {
   elements.loginView.classList.add('hidden');
   elements.dashboardView.classList.remove('hidden');
   elements.logoutButton.classList.remove('hidden');
-  elements.adminView.classList.toggle('hidden', user.role !== 'admin');
-  elements.welcomeTitle.textContent = user.role === 'admin' ? 'Documentación del piso' : `Hola, ${user.name}`;
-  await Promise.all([loadDocuments(), loadWifi()]);
+  elements.adminNavButton.classList.toggle('hidden', user.role !== 'admin');
+  elements.welcomeTitle.textContent = user.role === 'admin' ? 'Panel de gestión' : `Hola, ${user.name}`;
+  await loadDocuments();
   if (user.role === 'admin') await loadUsers();
-  if (window.location.hash === '#wifi') {
-    requestAnimationFrame(() => elements.wifi.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-  }
+  await showPortalSection(sectionFromHash(), false);
 }
+
+elements.portalSectionNav.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-portal-section]');
+  if (!button) return;
+  showPortalSection(button.dataset.portalSection);
+});
+
+elements.overviewDocumentsButton.addEventListener('click', () => showPortalSection('documents'));
+
+window.addEventListener('hashchange', () => {
+  if (state.user) showPortalSection(sectionFromHash(), false);
+});
 
 elements.showWifiPasswordButton.addEventListener('click', () => {
   if (!state.wifi) return;
