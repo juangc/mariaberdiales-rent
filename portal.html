@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>Área privada · María Berdiales 10</title>
-  <link rel="stylesheet" href="assets/tailwind.css?v=20260717-12">
+  <link rel="stylesheet" href="assets/tailwind.css?v=20260717-15">
   <script src="assets/vendor/qrcode.js" defer></script>
-  <script src="assets/portal.js?v=20260717-9" defer></script>
+  <script src="assets/portal.js?v=20260717-12" defer></script>
 </head>
 <body class="portal-body">
   <header class="portal-header">
@@ -192,6 +192,8 @@
             </div>
             <label class="field-label">Nombre<input class="field-input" name="name" required minlength="2"></label>
             <label class="field-label">Correo<input class="field-input" name="email" type="email" required></label>
+            <label class="field-label">Teléfono<input class="field-input" name="phone" type="tel" autocomplete="tel" maxlength="32" placeholder="+34 600 000 000" required></label>
+            <p class="field-help">Incluye el prefijo internacional para habilitar el contacto por WhatsApp.</p>
             <label class="field-label">Contraseña<input id="userPassword" class="field-input" name="password" type="password" autocomplete="new-password" minlength="8" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}" required></label>
             <label class="field-label">Repetir contraseña<input id="userPasswordConfirmation" class="field-input" name="passwordConfirmation" type="password" autocomplete="new-password" minlength="8" required></label>
             <p class="field-help">Mínimo 8 caracteres, con mayúsculas, minúsculas y números.</p>

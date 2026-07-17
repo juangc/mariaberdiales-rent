@@ -12,9 +12,9 @@
     "build:css": "BROWSERSLIST_IGNORE_OLD_DATA=true tailwind -c ./tailwind.config.cjs -i ./assets/styles.css -o ./assets/tailwind.css --minify",
     "build": "npm run build:css && node scripts/build.mjs",
     "start": "node server/app.mjs",
-    "start:deploy": "prisma migrate deploy && node server/app.mjs",
+    "start:deploy": "prisma generate && prisma migrate deploy && node server/app.mjs",
     "db:generate": "prisma generate",
-    "db:deploy": "prisma migrate deploy",
+    "db:deploy": "prisma generate && prisma migrate deploy",
     "db:baseline": "prisma migrate resolve --applied 20260716000000_init",
     "migrate:sqlite": "prisma migrate deploy && node scripts/migrate-sqlite-to-mysql.mjs"
   },

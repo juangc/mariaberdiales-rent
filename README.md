@@ -9,6 +9,7 @@ Prisma ORM y MySQL.
 - Cuenta individual para cada inquilino.
 - Alta y edición de inquilinos con confirmación de contraseña y un mínimo de
   8 caracteres que incluya mayúsculas, minúsculas y números.
+- Teléfono de contacto del inquilino y acceso directo a una conversación de WhatsApp.
 - Activación, desactivación y eliminación de cuentas desde Administración.
 - Facturas compartidas con todos los inquilinos activos.
 - Contratos privados asignados a una única persona.
@@ -167,7 +168,9 @@ npm run db:deploy
 ```
 
 A partir de ahí, las siguientes versiones se despliegan siempre con
-`npm run db:deploy`. No uses `prisma migrate dev` en producción.
+`npm run db:deploy`. Este comando regenera el cliente Prisma antes de aplicar
+las migraciones; reinicia después el proceso de la aplicación. No uses
+`prisma migrate dev` en producción.
 
 ## Generar la guía autocontenida
 

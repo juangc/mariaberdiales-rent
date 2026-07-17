@@ -401,6 +401,7 @@ function startUserEdit(user) {
   state.editingUserId = user.id;
   elements.userForm.elements.name.value = user.name;
   elements.userForm.elements.email.value = user.email;
+  elements.userForm.elements.phone.value = user.phone || '';
   elements.userPassword.value = '';
   elements.userPasswordConfirmation.value = '';
   elements.userPassword.required = false;
@@ -418,23 +419,40 @@ function startUserEdit(user) {
 function renderUsers() {
   elements.userList.replaceChildren();
   state.users.forEach((user) => {
-    const row = document.createElement('div');
-    row.className = 'user-row';
+    const card = document.createElement('article');
+    card.className = 'user-card';
+    const header = document.createElement('div');
+    header.className = 'user-card-header';
     const identity = document.createElement('div');
     identity.className = 'user-identity';
     identity.append(
       textElement('strong', 'user-name', user.name),
       textElement('span', 'user-email', user.email),
     );
+    if (user.phone) {
+      const contact = document.createElement('div');
+      contact.className = 'user-contact';
+      const whatsapp = textElement('a', 'user-whatsapp-button', 'WhatsApp ↗');
+      whatsapp.href = `https://wa.me/${user.phone.replace(/\D/g, '')}`;
+      whatsapp.target = '_blank';
+      whatsapp.rel = 'noopener';
+      whatsapp.setAttribute('aria-label', `Enviar un WhatsApp a ${user.name}`);
+      contact.append(textElement('span', 'user-phone', user.phone), whatsapp);
+      identity.append(contact);
+    }
     const status = textElement(
       'span',
       `user-status ${user.active ? 'is-active' : 'is-disabled'}`,
       user.active ? 'Activo' : 'Deshabilitado',
     );
-    const meta = document.createElement('div');
-    meta.className = 'user-actions';
-    meta.append(status, textElement('span', 'user-role', user.role === 'admin' ? 'Administrador' : 'Inquilino'));
+    const badges = document.createElement('div');
+    badges.className = 'user-badges';
+    badges.append(status, textElement('span', 'user-role', user.role === 'admin' ? 'Administrador' : 'Inquilino'));
+    header.append(identity, badges);
+    card.append(header);
     if (user.role === 'tenant') {
+      const actions = document.createElement('div');
+      actions.className = 'user-card-actions';
       const edit = textElement('button', 'portal-quiet-button', 'Editar');
       edit.type = 'button';
       edit.addEventListener('click', () => startUserEdit(user));
@@ -467,10 +485,10 @@ function renderUsers() {
           window.alert(error.message);
         }
       });
-      meta.append(edit, toggle, remove);
+      actions.append(edit, toggle, remove);
+      card.append(actions);
     }
-    row.append(identity, meta);
-    elements.userList.append(row);
+    elements.userList.append(card);
   });
 }
 
@@ -701,15 +719,25 @@ elements.userForm.addEventListener('submit', async (event) => {
   const form = new FormData(elements.userForm);
   const values = Object.fromEntries(form);
   try {
+    if (editing) {
+      const currentUser = state.users.find((user) => user.id === state.editingUserId);
+      if (!currentUser) throw new Error('El usuario que estás editando ya no está disponible.');
+      values.active = currentUser.active === true;
+    }
     if (values.password !== values.passwordConfirmation) throw new Error('Las contraseñas no coinciden.');
     if (editing && !values.password) {
       delete values.password;
       delete values.passwordConfirmation;
     }
-    await api(editing ? `/api/admin/users/${state.editingUserId}` : '/api/admin/users', {
+    const payload = await api(editing ? `/api/admin/users/${state.editingUserId}` : '/api/admin/users', {
       method: editing ? 'PATCH' : 'POST',
       body: JSON.stringify(values),
     });
+    if (editing) {
+      const index = state.users.findIndex((user) => user.id === state.editingUserId);
+      state.users[index] = { ...state.users[index], ...payload.user };
+      renderUsers();
+    }
     resetUserForm();
     setMessage(elements.userMessage, editing ? 'Usuario actualizado correctamente.' : 'Inquilino creado correctamente.');
     await loadUsers();

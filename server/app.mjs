@@ -85,6 +85,15 @@ function publicUser(user) {
   return { id: Number(user.id), email: user.email, name: user.name, role: user.role };
 }
 
+function managedUser(user) {
+  return {
+    ...publicUser(user),
+    phone: user.phone,
+    active: user.active,
+    createdAt: user.createdAt,
+  };
+}
+
 async function documentPage(user, searchParams) {
   const requestedPage = Number(searchParams.get('page') || 1);
   if (!Number.isSafeInteger(requestedPage) || requestedPage < 1) {
@@ -212,6 +221,19 @@ function validateTenantPassword(password, confirmation) {
   }
 }
 
+function normalizeTenantPhone(value, required = false) {
+  const phone = String(value || '').trim();
+  if (!phone) {
+    if (required) throw new HttpError(400, 'Introduce el teléfono del inquilino.');
+    return null;
+  }
+  const normalized = phone.replace(/[\s().-]/g, '');
+  if (!/^\+[1-9]\d{7,14}$/.test(normalized)) {
+    throw new HttpError(400, 'Introduce el teléfono en formato internacional, por ejemplo +34 600 000 000.');
+  }
+  return normalized;
+}
+
 async function handleApi(request, response, requestUrl) {
   const { pathname, searchParams } = requestUrl;
   if (request.method !== 'GET' && request.method !== 'HEAD') requireSameOrigin(request);
@@ -318,6 +340,7 @@ async function handleApi(request, response, requestUrl) {
         id: true,
         email: true,
         name: true,
+        phone: true,
         role: true,
         active: true,
         createdAt: true,
@@ -340,6 +363,7 @@ async function handleApi(request, response, requestUrl) {
     const body = await readJson(request);
     const email = String(body.email || '').trim().toLowerCase();
     const name = String(body.name || '').trim();
+    const phone = normalizeTenantPhone(body.phone, true);
     const password = String(body.password || '');
     const passwordConfirmation = String(body.passwordConfirmation || '');
     if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254) throw new HttpError(400, 'Introduce un correo válido.');
@@ -351,6 +375,7 @@ async function handleApi(request, response, requestUrl) {
         data: {
           email,
           name,
+          phone,
           passwordSalt: hashed.salt,
           passwordHash: hashed.hash,
           role: 'tenant',
@@ -358,7 +383,7 @@ async function handleApi(request, response, requestUrl) {
           createdAt: new Date().toISOString(),
         },
       });
-      sendJson(response, 201, { user: { id: Number(user.id), email, name, role: 'tenant' } });
+      sendJson(response, 201, { user: managedUser(user) });
     } catch (error) {
       if (error.code === 'P2002') throw new HttpError(409, 'Ya existe un usuario con ese correo.');
       throw error;
@@ -387,6 +412,7 @@ async function handleApi(request, response, requestUrl) {
       if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254) throw new HttpError(400, 'Introduce un correo válido.');
       data.email = email;
     }
+    if (has('phone')) data.phone = normalizeTenantPhone(body.phone);
     if (has('active')) {
       if (typeof body.active !== 'boolean') throw new HttpError(400, 'El estado del usuario no es válido.');
       data.active = body.active;
@@ -403,7 +429,7 @@ async function handleApi(request, response, requestUrl) {
     try {
       const user = await prisma.user.update({ where: { id: userId }, data });
       if (data.active === false || body.password) await prisma.session.deleteMany({ where: { userId } });
-      sendJson(response, 200, { user: publicUser(user) });
+      sendJson(response, 200, { user: managedUser(user) });
     } catch (error) {
       if (error.code === 'P2002') throw new HttpError(409, 'Ya existe un usuario con ese correo.');
       throw error;

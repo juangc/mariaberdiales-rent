@@ -278,12 +278,15 @@ a:hover { @apply text-ink; }
 .admin-card { @apply flex flex-col gap-4 p-5; }
 .document-form-actions { @apply flex flex-wrap items-center gap-2; }
 .users-panel { @apply mt-5 p-5; }
-.user-list { @apply mt-4 divide-y divide-black/10; }
-.user-row { @apply flex items-center justify-between gap-4 py-3; }
-.user-name, .user-email { @apply block; }
+.user-list { @apply mt-4 grid gap-3; }
+.user-card { @apply rounded-xl border border-black/10 bg-white/40 p-4; }
+.user-card-header { @apply flex flex-col gap-3; }
+.user-badges { @apply flex flex-wrap items-center gap-2; }
+.user-card-actions { @apply mt-4 grid grid-cols-2 gap-2 border-t border-black/10 pt-4; }
+.user-name, .user-email, .user-phone { @apply block; }
 .user-name { @apply text-sm text-ink; }
 .user-email { @apply text-xs text-ink/60; }
-.user-actions { @apply flex items-center gap-2; }
+.user-phone { @apply mt-0.5 font-mono text-[11px] text-ink/70; }
 .user-role { @apply font-mono text-[9px] tracking-[0.06em] text-ink/60 uppercase; }
 
 @media (min-width: 55rem) {
@@ -1488,18 +1491,33 @@ body > .page {
 }
 .user-form-actions button { flex: 1 1 170px; }
 .user-list { margin-top: 14px; }
-.user-row {
-  align-items: flex-start;
-  flex-direction: column;
-  gap: 12px;
-}
+.user-card { min-width: 0; }
+.user-card-header { min-width: 0; }
 .user-identity { min-width: 0; }
 .user-name,
-.user-email { overflow-wrap: anywhere; }
-.user-actions {
-  width: 100%;
+.user-email,
+.user-phone { overflow-wrap: anywhere; }
+.user-contact {
+  display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+.user-contact .user-phone { margin-top: 0; }
+.user-badges {
+  align-self: flex-start;
   justify-content: flex-start;
+}
+.user-card-actions > * {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 6px;
+  font-size: 10px;
+  text-align: center;
 }
 .user-status {
   border-radius: 999px;
@@ -1512,6 +1530,17 @@ body > .page {
 }
 .user-status.is-active { background: rgb(127 176 138 / 18%); color: #3f7650; }
 .user-status.is-disabled { background: rgb(181 101 47 / 14%); color: #8a4a1e; }
+.user-whatsapp-button {
+  border-radius: 999px;
+  background: #1f7a4d;
+  padding: 5px 9px;
+  color: #fff;
+  font-family: "Space Mono", ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.user-whatsapp-button:hover { background: #17613d; color: #fff; }
 .user-delete-button {
   border: 1px solid rgb(185 28 28 / 18%);
   border-radius: 8px;
@@ -1523,6 +1552,7 @@ body > .page {
   font-weight: 700;
 }
 .user-delete-button:hover { border-color: #b91c1c; background: #fef2f2; }
+.user-card-actions .user-delete-button { grid-column: 1 / -1; }
 .admin-published-documents {
   margin-top: 40px;
   padding-top: 30px;
@@ -1554,8 +1584,10 @@ body > .page {
   .admin-nav-pill { flex-grow: 0; min-width: 170px; }
   .admin-inner-heading { flex-direction: row; align-items: flex-end; justify-content: space-between; }
   .admin-users-layout { grid-template-columns: minmax(320px, 390px) minmax(0, 1fr); align-items: start; }
-  .user-row { align-items: center; flex-direction: row; }
-  .user-actions { width: auto; justify-content: flex-end; }
+  .user-card-header { flex-direction: row; align-items: flex-start; justify-content: space-between; }
+  .user-badges { flex: 0 0 auto; justify-content: flex-end; }
+  .user-card-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .user-card-actions .user-delete-button { grid-column: auto; }
 }
 
 html.has-reveal .reveal {
