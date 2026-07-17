@@ -1211,11 +1211,12 @@ body > .page {
   font-weight: 600;
 }
 .overview-documents-button:hover { color: var(--guide-ink); }
-.login-layout { min-height: calc(100vh - 148px); }
+.login-layout { min-height: calc(94vh - 148px); }
 .portal-hero-title {
   max-width: 650px;
   font-family: "Big Shoulders Display", ui-sans-serif, sans-serif;
   color: var(--guide-ink);
+  font-size: 40px;
   font-weight: 800;
   line-height: .92;
   letter-spacing: -.025em;
@@ -1576,7 +1577,7 @@ body > .page {
   .overview-document-copy { grid-column: 2; grid-row: 1; }
   .overview-document-amount { grid-column: 3; }
   .login-layout { grid-template-columns: minmax(0, 1fr) 410px; gap: 80px; }
-  .portal-hero-title { font-size: 78px; }
+  .portal-hero-title { font-size: 60px; }
   .public-resident-button { width: auto; }
   .resident-wifi-card { grid-template-columns: minmax(0, 1.25fr) minmax(300px, .75fr); }
   .resident-wifi-details { padding: 32px; }
