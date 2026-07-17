@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import url from 'url';
 
-const { readFile, mkdir, writeFile } = fs.promises;
+const { copyFile, readFile, mkdir, writeFile } = fs.promises;
 const { dirname, extname, resolve } = path;
 const { fileURLToPath } = url;
 
@@ -49,6 +49,15 @@ function countScriptBlocks(contents) {
 async function main() {
   let html = await readFile(sourcePath, 'utf8');
   const expectedScriptBlocks = countScriptBlocks(html);
+
+  // Los manuales PDF publicos se distribuyen como ficheros independientes.
+  const documentPattern = /assets\/docs\/[\p{L}\p{N}_.\/-]+\.pdf/gu;
+  const documentPaths = [...new Set(html.match(documentPattern) || [])];
+  for (const relativePath of documentPaths) {
+    const documentOutputPath = resolve(root, 'dist', relativePath);
+    await mkdir(dirname(documentOutputPath), { recursive: true });
+    await copyFile(resolve(root, relativePath), documentOutputPath);
+  }
 
   // Tailwind se compila antes de este script y su resultado se inserta aqui.
   const stylesheetPattern = /<link\s+rel="stylesheet"\s+href="(assets\/[^"]+\.css(?:\?[^"]*)?)"\s*>/g;
@@ -98,7 +107,7 @@ async function main() {
     '<!-- Generado automaticamente desde index.html con `npm run build`. -->',
   );
 
-  const unresolvedAssets = html.match(/(?:src|href)="assets\//g) || [];
+  const unresolvedAssets = html.match(/(?:src|href)="assets\/(?!docs\/)/g) || [];
   const generatedScriptBlocks = countScriptBlocks(html);
   if (unresolvedAssets.length) {
     throw new Error(`El bundle conserva ${unresolvedAssets.length} recursos locales sin embeber`);
@@ -112,7 +121,7 @@ async function main() {
   await mkdir(resolve(root, 'dist'), { recursive: true });
   await writeFile(outputPath, html);
   console.log(`Bundle creado en ${outputPath}`);
-  console.log(`${stylesheetResources.length} estilos, ${scriptResources.length} scripts y ${assetPaths.length} recursos embebidos`);
+  console.log(`${stylesheetResources.length} estilos, ${scriptResources.length} scripts, ${assetPaths.length} recursos embebidos y ${documentPaths.length} manuales PDF`);
 }
 
 main().catch((error) => {

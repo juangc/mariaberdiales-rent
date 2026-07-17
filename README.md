@@ -172,15 +172,17 @@ A partir de ahí, las siguientes versiones se despliegan siempre con
 las migraciones; reinicia después el proceso de la aplicación. No uses
 `prisma migrate dev` en producción.
 
-## Generar la guía autocontenida
+## Generar la guía para distribución
 
 ```sh
 npm run build
 ```
 
-El resultado se escribe en `dist/index.html`. Este fichero conserva la guía
-autocontenida, pero no contiene el portal, la base de datos, ningún documento
-privado ni las credenciales o el QR de la red WiFi.
+El resultado principal se escribe en `dist/index.html`. Las fuentes, imágenes,
+estilos y scripts quedan integrados en ese fichero; los manuales PDF públicos se
+copian a `dist/assets/docs/` para que puedan abrirse directamente. La distribución
+no contiene el portal, la base de datos, documentos privados, credenciales ni el
+QR de la red WiFi.
 
 ## Estructura de datos
 
