@@ -11,6 +11,8 @@ Prisma ORM y MySQL.
   8 caracteres que incluya mayúsculas, minúsculas y números.
 - Teléfono de contacto del inquilino y acceso directo a una conversación de WhatsApp.
 - Activación, desactivación y eliminación de cuentas desde Administración.
+- Envío de email de bienvenida desde cada usuario, con enlace al portal y una
+  contraseña temporal nueva.
 - Facturas compartidas con todos los inquilinos activos.
 - Contratos privados asignados a una única persona.
 - Seguimiento del estado, importe y suministro de cada factura: luz, agua, gas
@@ -103,6 +105,14 @@ En Plesk deben estar instaladas las extensiones **Git** y **Node.js Toolkit**.
    WIFI_RECOMMENDED_SSID=MOVISTAR_PLUS_3050
    WIFI_SECONDARY_SSID=MOVISTAR_3050
    WIFI_PASSWORD=clave-real-de-la-red-wifi
+   PUBLIC_BASE_URL=https://tu-dominio.example.com
+   MAIL_FROM=propietario@example.com
+   SENDMAIL_PATH=/usr/sbin/sendmail
+   SMTP_HOST=smtp.example.com
+   SMTP_PORT=587
+   SMTP_USER=propietario@example.com
+   SMTP_PASSWORD=contraseña-smtp
+   SMTP_SECURE=false
    MYSQL_HOST=localhost
    MYSQL_PORT=3306
    MYSQL_DATABASE=nombre_de_la_base_en_plesk

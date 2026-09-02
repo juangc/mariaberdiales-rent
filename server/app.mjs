@@ -4,6 +4,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { config } from './config.mjs';
 import { ensureInitialAdmin, findUserBySession, prisma } from './database.mjs';
+import { assertEmailReady, sendWelcomeEmail } from './email.mjs';
 import {
   HttpError,
   contentDisposition,
@@ -235,6 +236,16 @@ function normalizeTenantPhone(value, required = false) {
   return normalized;
 }
 
+function requestBaseUrl(request) {
+  if (config.publicBaseUrl) return config.publicBaseUrl;
+  const protocol = request.headers['x-forwarded-proto'] || (config.production ? 'https' : 'http');
+  return `${String(protocol).split(',')[0]}://${request.headers.host || `localhost:${config.port}`}`;
+}
+
+function createTemporaryPassword() {
+  return `${crypto.randomBytes(9).toString('base64url')}Aa1`;
+}
+
 async function handleApi(request, response, requestUrl) {
   const { pathname, searchParams } = requestUrl;
   if (request.method !== 'GET' && request.method !== 'HEAD') requireSameOrigin(request);
@@ -393,6 +404,44 @@ async function handleApi(request, response, requestUrl) {
   }
 
   const userStatusMatch = pathname.match(/^\/api\/admin\/users\/(\d+)$/);
+  const userWelcomeMatch = pathname.match(/^\/api\/admin\/users\/(\d+)\/welcome$/);
+  if (userWelcomeMatch && request.method === 'POST') {
+    await requireAdmin(request);
+    const userId = BigInt(userWelcomeMatch[1]);
+    const current = await prisma.user.findUnique({ where: { id: userId } });
+    if (!current) throw new HttpError(404, 'Usuario no encontrado.');
+    if (current.role !== 'tenant') throw new HttpError(403, 'Solo se puede enviar bienvenida a inquilinos.');
+    try {
+      assertEmailReady();
+    } catch (error) {
+      throw new HttpError(503, error.message);
+    }
+
+    const temporaryPassword = createTemporaryPassword();
+    const hashed = await hashPassword(temporaryPassword);
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        active: true,
+        passwordSalt: hashed.salt,
+        passwordHash: hashed.hash,
+      },
+    });
+    await prisma.session.deleteMany({ where: { userId } });
+    try {
+      await sendWelcomeEmail({
+        user,
+        temporaryPassword,
+        portalUrl: `${requestBaseUrl(request)}/portal`,
+      });
+    } catch (error) {
+      console.error(`No se pudo enviar bienvenida a ${user.email}:`, error);
+      throw new HttpError(502, `No se pudo enviar el email: ${error.message}`);
+    }
+    sendJson(response, 200, { user: managedUser(user) });
+    return;
+  }
+
   if (userStatusMatch && request.method === 'PATCH') {
     await requireAdmin(request);
     const userId = BigInt(userStatusMatch[1]);

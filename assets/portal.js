@@ -469,6 +469,25 @@ function renderUsers() {
           window.alert(error.message);
         }
       });
+      const welcome = textElement('button', 'user-welcome-button', 'Enviar bienvenida');
+      welcome.type = 'button';
+      welcome.addEventListener('click', async () => {
+        if (!window.confirm(`¿Enviar email de bienvenida a “${user.name}”? Se generará una contraseña temporal nueva y se cerrarán sus sesiones abiertas.`)) return;
+        welcome.disabled = true;
+        welcome.textContent = 'Enviando...';
+        setMessage(elements.userMessage, `Enviando bienvenida a ${user.name}...`);
+        try {
+          const payload = await api(`/api/admin/users/${user.id}/welcome`, { method: 'POST' });
+          const index = state.users.findIndex((item) => item.id === user.id);
+          if (index !== -1) state.users[index] = { ...state.users[index], ...payload.user };
+          renderUsers();
+          setMessage(elements.userMessage, `Email de bienvenida enviado a ${user.email}.`);
+        } catch (error) {
+          welcome.disabled = false;
+          welcome.textContent = 'Enviar bienvenida';
+          setMessage(elements.userMessage, error.message, true);
+        }
+      });
       const remove = textElement('button', 'user-delete-button', 'Eliminar');
       remove.type = 'button';
       remove.addEventListener('click', async () => {
@@ -485,7 +504,7 @@ function renderUsers() {
           window.alert(error.message);
         }
       });
-      actions.append(edit, toggle, remove);
+      actions.append(edit, toggle, welcome, remove);
       card.append(actions);
     }
     elements.userList.append(card);

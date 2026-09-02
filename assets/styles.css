@@ -283,6 +283,7 @@ a:hover { @apply text-ink; }
 .user-card-header { @apply flex flex-col gap-3; }
 .user-badges { @apply flex flex-wrap items-center gap-2; }
 .user-card-actions { @apply mt-4 grid grid-cols-2 gap-2 border-t border-black/10 pt-4; }
+.user-welcome-button { @apply rounded-lg border border-green-700/20 bg-green-100/40 px-3 py-2 font-mono text-[11px] font-bold text-green-800 disabled:cursor-wait disabled:opacity-60; }
 .user-name, .user-email, .user-phone { @apply block; }
 .user-name { @apply text-sm text-ink; }
 .user-email { @apply text-xs text-ink/60; }
@@ -1661,6 +1662,18 @@ body > .page {
   text-decoration: none;
 }
 .user-whatsapp-button:hover { background: #17613d; color: #fff; }
+.user-welcome-button {
+  border: 1px solid rgb(31 122 77 / 20%);
+  border-radius: 8px;
+  background: rgb(127 176 138 / 18%);
+  padding: 8px 11px;
+  color: #3f7650;
+  font-family: "Space Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+}
+.user-welcome-button:hover { border-color: #3f7650; background: rgb(127 176 138 / 28%); }
+.user-welcome-button:disabled { cursor: wait; opacity: 0.6; }
 .user-delete-button {
   border: 1px solid rgb(185 28 28 / 18%);
   border-radius: 8px;
@@ -1706,7 +1719,7 @@ body > .page {
   .admin-users-layout { grid-template-columns: minmax(320px, 390px) minmax(0, 1fr); align-items: start; }
   .user-card-header { flex-direction: row; align-items: flex-start; justify-content: space-between; }
   .user-badges { flex: 0 0 auto; justify-content: flex-end; }
-  .user-card-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .user-card-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .user-card-actions .user-delete-button { grid-column: auto; }
 }
 
