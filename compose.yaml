@@ -40,10 +40,14 @@ services:
       WIFI_RECOMMENDED_SSID: ${WIFI_RECOMMENDED_SSID:-MOVISTAR_PLUS_3050}
       WIFI_SECONDARY_SSID: ${WIFI_SECONDARY_SSID:-MOVISTAR_3050}
       WIFI_PASSWORD_FILE: /run/secrets/wifi_password
+      API_TOKEN_DAYS: ${API_TOKEN_DAYS:-30}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      DOWNLOAD_LINK_SECRET_FILE: /run/secrets/download_link_secret
     secrets:
       - admin_password
       - mysql_password
       - wifi_password
+      - download_link_secret
     volumes:
       - documents:/app/private-storage
 
@@ -73,6 +77,8 @@ secrets:
     file: ./secrets/mysql_root_password.txt
   wifi_password:
     file: ./secrets/wifi_password.txt
+  download_link_secret:
+    file: ./secrets/download_link_secret.txt
 
 volumes:
   mysql_data:

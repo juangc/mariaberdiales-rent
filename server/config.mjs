@@ -56,6 +56,20 @@ function mysqlConfiguration() {
   };
 }
 
+function parseOrigins(value) {
+  return String(value || '')
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
+    .filter(Boolean)
+    .map((origin) => {
+      try {
+        return new URL(origin).origin;
+      } catch {
+        throw new Error(`CORS_ORIGINS contiene un origen no válido: ${origin}`);
+      }
+    });
+}
+
 const mysql = mysqlConfiguration();
 
 export const config = {
@@ -84,6 +98,10 @@ export const config = {
   smtpPassword: readSecret(process.env.SMTP_PASSWORD_FILE, process.env.SMTP_PASSWORD),
   smtpSecure: ['1', 'true', 'yes'].includes(String(process.env.SMTP_SECURE || '').toLowerCase()),
   sessionDays: Number(process.env.SESSION_DAYS || 7),
+  apiTokenDays: Number(process.env.API_TOKEN_DAYS || 30),
+  downloadLinkSeconds: Number(process.env.DOWNLOAD_LINK_SECONDS || 300),
+  downloadLinkSecret: readSecret(process.env.DOWNLOAD_LINK_SECRET_FILE, process.env.DOWNLOAD_LINK_SECRET),
+  corsOrigins: parseOrigins(process.env.CORS_ORIGINS),
   maxPdfBytes: Number(process.env.MAX_PDF_BYTES || 12 * 1024 * 1024),
 };
 

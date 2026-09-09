@@ -24,6 +24,21 @@ Prisma ORM y MySQL.
 - Credenciales WiFi disponibles únicamente tras iniciar sesión, con contraseña
   enmascarada, copia directa y QR generado después de la autenticación.
 
+## API para la app móvil
+
+La misma API que usa el portal web puede consumirse desde la app React Native.
+Los clientes sin cookies inician sesión en `POST /api/auth/token`, reciben un
+token Bearer y lo envían en la cabecera `Authorization`. Los PDF pueden abrirse
+sin cabeceras mediante enlaces firmados de corta duración
+(`POST /api/documents/:id/link`). La referencia completa de rutas, parámetros y
+respuestas está en [`docs/API.md`](docs/API.md).
+
+Variables relacionadas: `API_TOKEN_DAYS` (validez de los tokens, 30 días),
+`CORS_ORIGINS` (orígenes web externos, no necesario para apps nativas),
+`DOWNLOAD_LINK_SECRET` o `DOWNLOAD_LINK_SECRET_FILE` (clave HMAC de los enlaces
+de descarga; sin ella se genera una por proceso y los enlaces caducan al
+reiniciar) y `DOWNLOAD_LINK_SECONDS` (duración de los enlaces, 300 s).
+
 ## Desarrollo local
 
 Se requiere Node 20.19 o posterior y una instancia MySQL 8.
@@ -60,11 +75,12 @@ cp secrets/admin_password.example secrets/admin_password.txt
 cp secrets/wifi_password.example secrets/wifi_password.txt
 cp secrets/mysql_password.example secrets/mysql_password.txt
 cp secrets/mysql_root_password.example secrets/mysql_root_password.txt
+cp secrets/download_link_secret.example secrets/download_link_secret.txt
 chmod 600 .env secrets/*.txt
 ```
 
 Edita `.env` con el dominio y correo reales. Sustituye el contenido de
-los cuatro archivos de `secrets/` por contraseñas únicas. La contraseña del
+los cinco archivos de `secrets/` por contraseñas únicas. La contraseña del
 administrador debe tener al menos 15 caracteres. Después ejecuta:
 
 ```sh
@@ -120,6 +136,8 @@ En Plesk deben estar instaladas las extensiones **Git** y **Node.js Toolkit**.
    MYSQL_PASSWORD=contraseña_de_la_base_en_plesk
    STORAGE_DIR=/ruta/persistente/privada/documents
    SESSION_DAYS=7
+   API_TOKEN_DAYS=30
+   DOWNLOAD_LINK_SECRET=64-caracteres-hexadecimales-aleatorios
    MAX_PDF_BYTES=12582912
    ```
 
@@ -202,4 +220,5 @@ QR de la red WiFi.
   se entrega mediante `/api/wifi` a usuarios con una sesión válida.
 - Las contraseñas se almacenan mediante `scrypt` con una sal aleatoria.
 - Las sesiones utilizan cookies `HttpOnly`, `Secure` y `SameSite=Strict` en
-  producción.
+  producción. La app móvil usa la misma tabla de sesiones mediante tokens Bearer;
+  en la base solo se guarda el hash SHA-256 del token.
