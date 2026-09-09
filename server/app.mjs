@@ -3,21 +3,28 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { config } from './config.mjs';
-import { ensureInitialAdmin, findUserBySession, prisma } from './database.mjs';
+import {
+  authenticate,
+  createDownloadToken,
+  createSession,
+  readBearerToken,
+  revokeSession,
+  verifyDownloadToken,
+} from './auth.mjs';
+import { ensureInitialAdmin, prisma } from './database.mjs';
 import { assertEmailReady, sendWelcomeEmail } from './email.mjs';
 import {
   HttpError,
   contentDisposition,
-  parseCookies,
+  corsHeaders,
   readBody,
   readJson,
   requireSameOrigin,
   safeDownloadName,
   sendJson,
   serializeSessionCookie,
-  sessionCookieName,
 } from './http.mjs';
-import { createSessionToken, digestToken, hashPassword, verifyPassword } from './security.mjs';
+import { hashPassword, verifyPassword } from './security.mjs';
 
 const mimeTypes = {
   '.css': 'text/css; charset=utf-8',
@@ -47,15 +54,14 @@ function securityHeaders(contentType = '') {
   return headers;
 }
 
-async function requestUser(request) {
-  const cookies = parseCookies(request);
-  return findUserBySession(cookies[sessionCookieName()]);
+async function requireAuth(request) {
+  const auth = await authenticate(request);
+  if (!auth) throw new HttpError(401, 'Inicia sesión para continuar.');
+  return auth;
 }
 
 async function requireUser(request) {
-  const user = await requestUser(request);
-  if (!user) throw new HttpError(401, 'Inicia sesión para continuar.');
-  return user;
+  return (await requireAuth(request)).user;
 }
 
 async function requireAdmin(request) {
@@ -198,6 +204,12 @@ function publicDocument(row) {
   };
 }
 
+function assertDocumentAccess(user, row) {
+  if (user.role !== 'admin' && row.visibility !== 'shared' && row.tenantId !== user.id) {
+    throw new HttpError(403, 'No tienes acceso a este documento.');
+  }
+}
+
 function decodeFileName(value) {
   try {
     return decodeURIComponent(String(value || 'documento.pdf'));
@@ -246,9 +258,47 @@ function createTemporaryPassword() {
   return `${crypto.randomBytes(9).toString('base64url')}Aa1`;
 }
 
+async function authenticateCredentials(request) {
+  assertLoginAllowed(request);
+  const body = await readJson(request);
+  const email = String(body.email || '').trim().toLowerCase();
+  const password = String(body.password || '');
+  if (!password || password.length > 128) throw new HttpError(401, 'Correo o contraseña incorrectos.');
+  const user = await prisma.user.findFirst({ where: { email, active: true } });
+  if (!user) {
+    await hashPassword(password, Buffer.alloc(16, 1));
+    throw new HttpError(401, 'Correo o contraseña incorrectos.');
+  }
+  if (!(await verifyPassword(password, user.passwordSalt, user.passwordHash))) {
+    throw new HttpError(401, 'Correo o contraseña incorrectos.');
+  }
+  clearLoginAttempts(request);
+  return user;
+}
+
+function tokenResponse(session, user) {
+  return {
+    token: session.token,
+    tokenType: 'Bearer',
+    expiresAt: session.expiresAt,
+    user: publicUser(user),
+  };
+}
+
 async function handleApi(request, response, requestUrl) {
   const { pathname, searchParams } = requestUrl;
-  if (request.method !== 'GET' && request.method !== 'HEAD') requireSameOrigin(request);
+  if (request.method === 'OPTIONS') {
+    // Preflight CORS: solo responde afirmativamente a orígenes de CORS_ORIGINS.
+    const headers = corsHeaders(request);
+    if (!headers['Access-Control-Allow-Origin']) throw new HttpError(403, 'Origen no permitido.');
+    response.writeHead(204, headers).end();
+    return;
+  }
+  // Las peticiones con token Bearer no son vulnerables a CSRF: el token se
+  // adjunta de forma explícita y nunca lo envía el navegador automáticamente.
+  if (request.method !== 'GET' && request.method !== 'HEAD' && !readBearerToken(request)) {
+    requireSameOrigin(request);
+  }
 
   if (pathname === '/api/health' && request.method === 'GET') {
     await prisma.$queryRaw`SELECT 1`;
@@ -256,43 +306,38 @@ async function handleApi(request, response, requestUrl) {
     return;
   }
 
+  // Inicio de sesión del portal web: la sesión viaja en una cookie HttpOnly.
   if (pathname === '/api/login' && request.method === 'POST') {
-    assertLoginAllowed(request);
-    const body = await readJson(request);
-    const email = String(body.email || '').trim().toLowerCase();
-    const password = String(body.password || '');
-    if (!password || password.length > 128) throw new HttpError(401, 'Correo o contraseña incorrectos.');
-    const user = await prisma.user.findFirst({ where: { email, active: true } });
-    if (!user) {
-      await hashPassword(password, Buffer.alloc(16, 1));
-      throw new HttpError(401, 'Correo o contraseña incorrectos.');
-    }
-    if (!(await verifyPassword(password, user.passwordSalt, user.passwordHash))) {
-      throw new HttpError(401, 'Correo o contraseña incorrectos.');
-    }
-
-    clearLoginAttempts(request);
-    const token = createSessionToken();
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + config.sessionDays * 86_400_000);
-    await prisma.session.create({
-      data: {
-        tokenHash: digestToken(token),
-        userId: user.id,
-        expiresAt: expiresAt.toISOString(),
-        createdAt: now.toISOString(),
-      },
-    });
-    response.setHeader('Set-Cookie', serializeSessionCookie(token, config.sessionDays * 86_400));
+    const user = await authenticateCredentials(request);
+    const session = await createSession(user.id, config.sessionDays);
+    response.setHeader('Set-Cookie', serializeSessionCookie(session.token, config.sessionDays * 86_400));
     sendJson(response, 200, { user: publicUser(user) });
     return;
   }
 
+  // Inicio de sesión para clientes sin cookies (app móvil): devuelve un token
+  // Bearer que debe enviarse en la cabecera Authorization.
+  if (pathname === '/api/auth/token' && request.method === 'POST') {
+    const user = await authenticateCredentials(request);
+    const session = await createSession(user.id, config.apiTokenDays);
+    sendJson(response, 200, tokenResponse(session, user));
+    return;
+  }
+
+  // Rota el token actual por uno nuevo y revoca el anterior.
+  if (pathname === '/api/auth/refresh' && request.method === 'POST') {
+    const auth = await requireAuth(request);
+    if (auth.method !== 'bearer') throw new HttpError(400, 'Solo se pueden renovar tokens Bearer.');
+    const session = await createSession(auth.user.id, config.apiTokenDays);
+    await revokeSession(auth.token);
+    sendJson(response, 200, tokenResponse(session, auth.user));
+    return;
+  }
+
   if (pathname === '/api/logout' && request.method === 'POST') {
-    const cookies = parseCookies(request);
-    const token = cookies[sessionCookieName()];
-    if (token) await prisma.session.deleteMany({ where: { tokenHash: digestToken(token) } });
-    response.setHeader('Set-Cookie', serializeSessionCookie('', 0));
+    const auth = await authenticate(request);
+    if (auth) await revokeSession(auth.token);
+    if (!auth || auth.method === 'cookie') response.setHeader('Set-Cookie', serializeSessionCookie('', 0));
     sendJson(response, 200, { ok: true });
     return;
   }
@@ -322,14 +367,36 @@ async function handleApi(request, response, requestUrl) {
     return;
   }
 
+  // Enlace temporal firmado para abrir el PDF sin cabeceras (visor nativo,
+  // navegador del sistema, hoja de compartir…).
+  const linkMatch = pathname.match(/^\/api\/documents\/(\d+)\/link$/);
+  if (linkMatch && request.method === 'POST') {
+    const user = await requireUser(request);
+    const row = await prisma.document.findUnique({ where: { id: BigInt(linkMatch[1]) }, select: { id: true, visibility: true, tenantId: true } });
+    if (!row) throw new HttpError(404, 'Documento no encontrado.');
+    assertDocumentAccess(user, row);
+    const link = createDownloadToken(Number(row.id), Number(user.id));
+    sendJson(response, 200, {
+      url: `${requestBaseUrl(request)}/api/documents/${row.id}/file?access=${encodeURIComponent(link.token)}`,
+      expiresAt: link.expiresAt,
+    });
+    return;
+  }
+
   const fileMatch = pathname.match(/^\/api\/documents\/(\d+)\/file$/);
   if (fileMatch && request.method === 'GET') {
-    const user = await requireUser(request);
+    const accessToken = searchParams.get('access');
+    let user;
+    if (accessToken) {
+      const { userId } = verifyDownloadToken(accessToken, fileMatch[1]);
+      user = await prisma.user.findFirst({ where: { id: userId, active: true }, select: { id: true, role: true } });
+      if (!user) throw new HttpError(403, 'El enlace de descarga no es válido.');
+    } else {
+      user = await requireUser(request);
+    }
     const row = await prisma.document.findUnique({ where: { id: BigInt(fileMatch[1]) } });
     if (!row) throw new HttpError(404, 'Documento no encontrado.');
-    if (user.role !== 'admin' && row.visibility !== 'shared' && row.tenantId !== user.id) {
-      throw new HttpError(403, 'No tienes acceso a este documento.');
-    }
+    assertDocumentAccess(user, row);
     const filePath = path.resolve(config.storagePath, row.storageName);
     if (!filePath.startsWith(`${config.storagePath}${path.sep}`) || !fs.existsSync(filePath)) {
       throw new HttpError(404, 'El archivo ya no está disponible.');
@@ -694,8 +761,10 @@ await ensureInitialAdmin();
 const server = http.createServer(async (request, response) => {
   try {
     const requestUrl = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
-    if (requestUrl.pathname.startsWith('/api/')) await handleApi(request, response, requestUrl);
-    else serveStatic(response, requestUrl.pathname);
+    if (requestUrl.pathname.startsWith('/api/')) {
+      for (const [name, value] of Object.entries(corsHeaders(request))) response.setHeader(name, value);
+      await handleApi(request, response, requestUrl);
+    } else serveStatic(response, requestUrl.pathname);
   } catch (error) {
     const status = error instanceof HttpError ? error.status : 500;
     if (status === 500) console.error(error);

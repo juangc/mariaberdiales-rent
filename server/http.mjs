@@ -69,16 +69,43 @@ export async function readJson(request) {
   }
 }
 
-export function requireSameOrigin(request) {
-  const origin = request.headers.origin;
-  if (!origin) return;
-  let originHost;
+function parseOrigin(origin) {
   try {
-    originHost = new URL(origin).host;
+    return new URL(origin);
   } catch {
-    throw new HttpError(403, 'Origen no permitido.');
+    return null;
   }
-  if (originHost !== request.headers.host) throw new HttpError(403, 'Origen no permitido.');
+}
+
+export function isAllowedOrigin(request) {
+  const origin = request.headers.origin;
+  if (!origin) return true;
+  const parsed = parseOrigin(origin);
+  return Boolean(parsed) && (parsed.host === request.headers.host || config.corsOrigins.includes(parsed.origin));
+}
+
+export function requireSameOrigin(request) {
+  if (!isAllowedOrigin(request)) throw new HttpError(403, 'Origen no permitido.');
+}
+
+/**
+ * Cabeceras CORS para los orígenes declarados en CORS_ORIGINS. Solo hace falta
+ * para clientes web alojados en otro dominio (por ejemplo Expo Web o un
+ * entorno de desarrollo); las apps nativas no necesitan CORS.
+ */
+export function corsHeaders(request) {
+  const origin = request.headers.origin;
+  if (!origin || !config.corsOrigins.length) return {};
+  const parsed = parseOrigin(origin);
+  if (!parsed || !config.corsOrigins.includes(parsed.origin)) return {};
+  return {
+    'Access-Control-Allow-Origin': parsed.origin,
+    'Access-Control-Allow-Methods': 'GET, HEAD, POST, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-File-Name',
+    'Access-Control-Expose-Headers': 'Content-Disposition, Content-Length',
+    'Access-Control-Max-Age': '600',
+    'Vary': 'Origin',
+  };
 }
 
 export function safeDownloadName(name) {
